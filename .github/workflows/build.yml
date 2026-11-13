@@ -36,16 +36,16 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug assembleRelease
 
-      - name: Rename APK
+      - name: Siapkan APK
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/debug/app-debug.apk out/RZONE-Hyper-debug.apk
           cp app/build/outputs/apk/release/app-release.apk out/RZONE-Hyper.apk
 
+      # Hanya APK utama yang diunggah (APK debug cuma dipakai untuk tes emulator).
       - uses: actions/upload-artifact@v4
         with:
           name: RZONE-Hyper
-          path: out/*.apk
+          path: out/RZONE-Hyper.apk
 
       - name: Pillow (untuk mengecilkan screenshot)
         run: pip install --quiet pillow || true
