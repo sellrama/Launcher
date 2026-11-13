@@ -1,8 +1,21 @@
-# RZONE Hyper v6.0 — Lockscreen & Launcher
+# RZONE Hyper v8 — Lockscreen, Launcher & Tira AI
 
 Powered by **RZONEDEV** · TikTok [@maramadhona](https://www.tiktok.com/@maramadhona) · aplikasi **gratis**.
 
 Source code ini adalah RZONE Hyper v5.1 yang disusun ulang menjadi proyek Android Studio (Java), lalu diperbaiki bug-nya, dirapikan tampilannya, dan ditambah fitur. APK v5.1 asli tetap ada di `RZONE-Hyper-v5.1.apk`.
+
+## Yang baru di v7–v8
+
+- **Tira (asisten AI)**: panel ala Google Assistant/Ella, input suara lewat tombol, jawaban bersuara, perintah HP (buka aplikasi, putar video YouTube, senter, alarm/timer, baterai) dan kustomisasi tampilan ("ganti jam ke neon", "warna aksen biru", "tata letak lockscreen ios"). Otak memakai API Nexray dengan cadangan otomatis (claude → copilot → gemini → deepseek). Tombol Tira ada di lockscreen, ikon Tira di drawer, tekan lama tombol Home (asisten digital), dan mikrofon di search bar.
+- **30 desain jam** dengan galeri pratinjau; Big Clock dihapus.
+- **AOD**: ketuk dua kali di lockscreen; layar hitam penuh, jam tidak redup, jam mengecil & meluncur ke tengah, anti burn-in.
+- **Animasi**: aplikasi membesar dari ikonnya dan mengecil kembali ke ikon saat keluar; lockscreen transparan bergeser mengikuti jari lalu home "mendarat".
+- **Total UI berbeda total**: pengaturan PixelOS (tile bersambung), iOS (grup + profil), Custom (dasbor tile) + pencarian; launcher iOS memakai App Library di kanan halaman terakhir.
+- **Tema .zth** (HiOS/XOS): impor dari *Pengaturan › Tema .zth* — ikon, latar folder, wallpaper home & lockscreen.
+- **Store Depth Wallpaper**: 300 ilustrasi depth (20 adegan × 15 variasi) + foto online dengan subjek dipotong otomatis.
+- **Widget**: tekan lama area kosong › Widget; tekan lama widget untuk ubah ukuran/hapus.
+- **Ikon asli tanpa plat putih**, tanpa emoji di seluruh UI.
+- **Update bertumpuk**: semua build ditandatangani kunci tetap (`keystore/hyper.jks`) dan versionCode naik otomatis, jadi APK baru cukup dipasang menimpa yang lama.
 
 ## Total UI
 

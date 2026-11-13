@@ -221,11 +221,26 @@ public class StoreActivity extends Activity {
         }
     }
 
+    private static final String[] KW = {"nature", "city", "mountain", "animal", "sky", "beach", "forest", "car", "flower", "night"};
+
+    /** Foto online: picsum dulu, bila gagal/terblokir pakai loremflickr (kategori bergilir) sebagai cadangan. */
+    static Bitmap photo(String id, int w, int h) {
+        Bitmap b = getBitmap("https://picsum.photos/id/" + id + "/" + w + "/" + h);
+        if (b != null) return b;
+        int n;
+        try {
+            n = Integer.parseInt(id);
+        } catch (Exception e) {
+            n = id.hashCode() & 0xffff;
+        }
+        return getBitmap("https://loremflickr.com/" + w + "/" + h + "/" + KW[n % KW.length] + "?lock=" + n);
+    }
+
     private static Bitmap getBitmap(String u) {
         try {
             HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
-            c.setConnectTimeout(15000);
-            c.setReadTimeout(30000);
+            c.setConnectTimeout(7000);
+            c.setReadTimeout(15000);
             c.setInstanceFollowRedirects(true);
             try (InputStream in = c.getInputStream()) {
                 return BitmapFactory.decodeStream(in);
@@ -302,7 +317,7 @@ public class StoreActivity extends Activity {
                 final int fw = tw / 2, fh = th / 2;
                 pool.execute(() -> {
                     Bitmap b;
-                    if (key.startsWith("p")) b = getBitmap("https://picsum.photos/id/" + key.substring(1) + "/" + fw * 2 + "/" + fh * 2);
+                    if (key.startsWith("p")) b = photo(key.substring(1), fw * 2, fh * 2);
                     else {
                         String[] s = key.substring(1).split("_");
                         b = Scene.storeThumb(Integer.parseInt(s[0]), Integer.parseInt(s[1]), fw, fh);
@@ -339,7 +354,7 @@ public class StoreActivity extends Activity {
         final android.util.DisplayMetrics m = getResources().getDisplayMetrics();
         pool.execute(() -> {
             int w = Math.min(1440, m.widthPixels), hh = Math.min(3200, m.heightPixels);
-            Bitmap b = getBitmap("https://picsum.photos/id/" + id + "/" + w + "/" + hh);
+            Bitmap b = photo(id, w, hh);
             if (b == null) {
                 h.post(() -> status.setText("Gagal mengunduh. Cek koneksi internet."));
                 return;

@@ -302,12 +302,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         if (!loaded) reloadApps();
         else ready();
         if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_DRAWER, false)) h.postDelayed(() -> animDp(1), 120);
-        // uji CI (build debug saja): tambah widget otomatis
-        if (getIntent() != null && getIntent().hasExtra("ci_widget")
-                && (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
-            final String hint = getIntent().getStringExtra("ci_widget");
-            h.postDelayed(() -> wd.addFirst(hint), 2500);
-        }
+        ciWidget(getIntent());
     }
 
     @Override
@@ -353,9 +348,19 @@ public class HomeActivity extends Activity implements AppCell.L {
         goHome();
     }
 
+    /** Uji CI (build debug saja): tambah widget otomatis. */
+    void ciWidget(Intent i) {
+        if (i == null || !i.hasExtra("ci_widget")) return;
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0) return;
+        final String hint = i.getStringExtra("ci_widget");
+        i.removeExtra("ci_widget");
+        h.postDelayed(() -> wd.addFirst(hint), 2500);
+    }
+
     @Override
     protected void onNewIntent(Intent i) {
         super.onNewIntent(i);
+        ciWidget(i);
         if (i != null && i.getBooleanExtra(EXTRA_DRAWER, false)) {
             resetOverlay();
             animDp(1);
