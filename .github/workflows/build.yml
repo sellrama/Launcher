@@ -45,6 +45,9 @@ jobs:
           name: RZONE-Hyper
           path: out/*.apk
 
+      - name: Pillow (untuk mengecilkan screenshot)
+        run: pip install --quiet pillow || true
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

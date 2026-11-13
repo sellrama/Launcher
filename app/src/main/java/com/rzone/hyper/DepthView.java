@@ -73,6 +73,15 @@ public class DepthView extends View implements SensorEventListener {
             fakeFp, notifOn;
     private final Clock clk = new Clock();
     private final Paint black = new Paint();
+    private float vh;
+    private final Full full = new Full();
+
+    private static final class Full extends RectF {
+        RectF set0(float w, float h) {
+            set(0, 0, w, h);
+            return this;
+        }
+    }
     private String extra = "";
     private SimpleDateFormat fmt = new SimpleDateFormat("EEEE, d MMM", ID);
 
@@ -242,6 +251,7 @@ public class DepthView extends View implements SensorEventListener {
 
     @Override
     protected void onSizeChanged(int w, int h, int ow, int oh) {
+        if (vh == 0) vh = h;
         reload();
     }
 
@@ -321,7 +331,7 @@ public class DepthView extends View implements SensorEventListener {
     }
 
     private float btnY() {
-        return getHeight() - d * (layout == 1 ? 76 : 82);
+        return vh - d * (layout == 1 ? 76 : 82);
     }
 
     private int hit(float x, float y) {
@@ -333,7 +343,7 @@ public class DepthView extends View implements SensorEventListener {
     }
 
     private float fpY() {
-        return getHeight() - d * 150;
+        return vh - d * 150;
     }
 
     private boolean fpHit(float x, float y) {
@@ -685,15 +695,17 @@ public class DepthView extends View implements SensorEventListener {
             tp.setShadowLayer(8, 0, 2, Color.argb(140, 0, 0, 0));
             tp.setAlpha((int) (210 * a));
             float hy = layout == 2 ? h - d * 52 : h - d * 128;
-            if (layout == 1) hy = h - d * 112;
+            if (layout == 1) hy = h - d * (fakeFp ? 98 : 112);
             c.drawText("Geser ke atas untuk membuka", w / 2, hy + (float) Math.sin(now / 340f) * 6 * d, tp);
         }
         fp.reset();
         fp.setAntiAlias(true);
         fp.setColor(Color.WHITE);
         fp.setAlpha((int) (a * 200));
-        float bw = layout == 2 ? d * 68 : d * 55;
-        c.drawRoundRect(w / 2 - bw, h - d * 20, w / 2 + bw, h - d * 15.5f, d * 2.5f, d * 2.5f, fp);
+        if (preview) { // di lockscreen asli, garis navigasi sistem sudah tampil
+            float bw = layout == 2 ? d * 68 : d * 55;
+            c.drawRoundRect(w / 2 - bw, h - d * 20, w / 2 + bw, h - d * 15.5f, d * 2.5f, d * 2.5f, fp);
+        }
         tp.setShadowLayer(0, 0, 0, 0);
         tp.setTextSize(d * 10);
         tp.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
@@ -754,6 +766,20 @@ public class DepthView extends View implements SensorEventListener {
     @Override
     protected void onDraw(Canvas c) {
         float w = getWidth(), h = getHeight();
+        // Pratinjau: gambar seolah-olah di layar penuh lalu diperkecil, agar proporsinya sama persis.
+        float k = 1;
+        if (preview) {
+            android.util.DisplayMetrics m = getResources().getDisplayMetrics();
+            float sw = Math.min(m.widthPixels, m.heightPixels), sh = Math.max(m.widthPixels, m.heightPixels);
+            if (w > 0) {
+                k = w / sw;
+                w = sw;
+                h = Math.max(sh, getHeight() / k);
+                c.save();
+                c.scale(k, k);
+            }
+        }
+        vh = h;
         long now = SystemClock.uptimeMillis();
         nowT = now;
         float dt = Math.min(0.05f, (now - last) / 1000f);
@@ -774,8 +800,8 @@ public class DepthView extends View implements SensorEventListener {
         float slide = p * h * 0.7f;
         int sv = p > 0 ? c.saveLayerAlpha(0, 0, w, h, (int) (255 * Math.pow(1 - p, 0.9))) : c.save();
         if (p > 0) {
-            float k = 1 - p * 0.05f;
-            c.scale(k, k, w / 2, h);
+            float ks = 1 - p * 0.05f;
+            c.scale(ks, ks, w / 2, h);
         }
         c.translate(0, -slide);
         c.drawRect(0, 0, w, h + slide + 1, black);
@@ -784,7 +810,7 @@ public class DepthView extends View implements SensorEventListener {
             c.translate(-cx * 9 * d, -cy * 9 * d);
             c.scale(1.12f, 1.12f, w / 2, h / 2);
             pb.setAlpha((int) ((1 - aod) * 255));
-            c.drawBitmap(bg, 0, 0, pb);
+            c.drawBitmap(bg, null, full.set0(w, h), pb);
             c.restore();
         }
         dst.set(w / 2 - w * 0.56f - cx * 9 * d, h / 2 - h * 0.56f - cy * 9 * d,
@@ -801,13 +827,14 @@ public class DepthView extends View implements SensorEventListener {
             c.scale(1.12f, 1.12f, w / 2, h / 2);
             if (fg != null && !fg.isRecycled()) {
                 pb.setAlpha(al);
-                c.drawBitmap(fg, 0, 0, pb);
+                c.drawBitmap(fg, null, full.set0(w, h), pb);
             }
             if (dynId >= 0) Scene.dyn(c, w, h, now, al, dynId);
             c.restore();
         }
         drawUi(c, w, h, now, e);
         c.restoreToCount(sv);
+        if (k != 1) c.restore();
         if (!visible && !preview) return; // jangan menggambar terus saat tidak terlihat
         if (aod > 0.98f && aodT > 0.5f && !analogFace()) postInvalidateDelayed(1000);
         else postInvalidateOnAnimation();

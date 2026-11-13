@@ -16,6 +16,9 @@ adb shell wm dismiss-keyguard
 adb shell appops set $PKG SYSTEM_ALERT_WINDOW allow
 adb shell cmd notification allow_listener $PKG/$PKG.NotifListener
 adb shell cmd package set-home-activity $PKG/.HomeActivity
+# launcher bawaan emulator sering ANR & menutupi screenshot
+adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
+adb shell settings put secure immersive_mode_confirmations confirmed
 adb shell cmd notification post -S bigtext -t 'Budi' ci1 'Nanti jadi ketemu jam 7 kan?'
 adb shell cmd notification post -S bigtext -t 'Promo' ci2 'Diskon 50% khusus hari ini'
 adb logcat -c
@@ -54,7 +57,8 @@ adb logcat -d | grep -iE "rzone|FATAL|ANR" | tail -400 > $OUT/app_log.txt
 
 # kecilkan gambar agar repo tidak membengkak
 for f in $OUT/raw/*.png; do
-  ffmpeg -loglevel error -y -i "$f" -vf scale=432:-1 -q:v 5 "$OUT/$(basename "${f%.png}").jpg" || cp "$f" $OUT/
+  python3 -c "import sys;from PIL import Image;im=Image.open(sys.argv[1]).convert('RGB');im=im.resize((432,int(im.height*432/im.width)));im.save(sys.argv[2],quality=72)" "$f" "$OUT/$(basename "${f%.png}").jpg" 2>/dev/null \
+    || ffmpeg -loglevel error -y -i "$f" -vf scale=432:-1 -q:v 5 "$OUT/$(basename "${f%.png}").jpg" || cp "$f" $OUT/
 done
 rm -rf $OUT/raw
 ls -la $OUT
