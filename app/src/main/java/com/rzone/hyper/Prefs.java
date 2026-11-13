@@ -45,7 +45,7 @@ public class Prefs {
         // ---------- lockscreen lain ----------
         d("lay", 1); // tata letak lockscreen: 0 Hyper, 1 Pixel, 2 iOS
         d("lp", 100); d("la", 1); d("dm", 0); d("tb", 1); d("lbt", 0); d("hs", 1); d("li", 1);
-        d("bs", 1); d("ffp", 1); d("nlk", 1);
+        d("bs", 1); d("ffp", 1); d("nlk", 1); d("ltb", 1); // ltb = tombol Tira di lockscreen
         // ---------- wallpaper launcher ----------
         d("hm", 0); d("hw", 0); d("hd", 10); d("hb", 1); d("wp", 1);
         // ---------- layar utama ----------

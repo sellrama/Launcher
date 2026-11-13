@@ -185,13 +185,17 @@ public class StoreActivity extends Activity {
                     JSONObject o = a.getJSONObject(i);
                     got.add(new String[]{o.optString("id"), o.optString("author")});
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                android.util.Log.w("Hyper", "store list", e);
+            }
+            if (got.isEmpty()) {
+                // Daftar API gagal: pakai ID foto picsum yang sudah diketahui (0–1084) langsung.
+                for (int id = (pg - 1) * 60; id < pg * 60 && id <= 1084; id++) got.add(new String[]{String.valueOf(id), "Foto #" + id});
             }
             h.post(() -> {
                 loading = false;
                 if (got.isEmpty()) {
-                    if (photos.isEmpty()) status.setText("Tidak bisa memuat foto online. Cek koneksi internet.");
-                    endReached = pg > 1;
+                    endReached = true;
                     return;
                 }
                 page++;
@@ -229,6 +233,7 @@ public class StoreActivity extends Activity {
                 c.disconnect();
             }
         } catch (Exception e) {
+            android.util.Log.w("Hyper", "store img " + u, e);
             return null;
         }
     }

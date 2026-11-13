@@ -47,7 +47,7 @@ final class Clock {
     private static final Typeface MONO = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD);
 
     private float al() {
-        return copa * e * (1 - aod * 0.1f);
+        return copa * e; // AOD tidak meredupkan jam
     }
 
     /** Gambar desain {@code face} mulai dari y = startTop. */

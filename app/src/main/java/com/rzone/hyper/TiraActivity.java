@@ -56,6 +56,8 @@ public class TiraActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         d = getResources().getDisplayMetrics().density;
+        // dibuka dari tombol Tira di lockscreen: tampil di atas lockscreen
+        if (getIntent().getBooleanExtra("lock", false)) setShowWhenLocked(true);
         brain = new TiraBrain(this);
         Prefs pr = new Prefs(this);
         acc = pr.os() == Prefs.OS_IOS ? 0xFF0A84FF : pr.os() == Prefs.OS_PIXEL ? 0xFFA8C7FA : pr.gi("ac");

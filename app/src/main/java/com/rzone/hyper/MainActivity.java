@@ -1574,6 +1574,7 @@ public class MainActivity extends Activity {
         togK(c, "Ikon gembok", "li");
         togK(c, "Teks \"Geser ke atas\"", "hs");
         togK(c, "Tombol bawah", "tb");
+        togK(c, "Tombol Tira di lockscreen", "Di tengah bawah, di atas garis navigasi", "ltb", null);
         chipsK(c, "Tombol kiri", "lbt", "Aplikasi", "Senter");
         chipsK(c, "Ketuk dua kali", "la", "Tidak ada", "AOD (layar redup)", "Matikan layar");
         togK(c, "Fake Fingerprint in-display", "ffp");

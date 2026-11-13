@@ -231,6 +231,20 @@ final class Icons {
             rect = new Rect((int) (box.left - w * 0.25f), (int) (box.top - w * 0.25f),
                     (int) (box.right + w * 0.25f), (int) (box.bottom + w * 0.25f));
         }
+        // Gaya "Asli": ikon asli aplikasi + dibentuk, TANPA plat/latar tambahan dan tanpa putih.
+        //  - adaptif berlatar warna  → latar + logo, dibentuk mask
+        //  - adaptif berlatar putih  → latar putih dibuang, hanya logo asli (tanpa plat)
+        //  - ikon lama (non-adaptif) → apa adanya, tanpa plat
+        if (style == 0 && (!ad || whiteish(bgD))) {
+            if (ad) {
+                // logo dari lapisan depan, sedikit diperbesar karena tanpa latar
+                float g = w * 0.42f;
+                drawD(c, fg, new Rect((int) (box.left - g), (int) (box.top - g), (int) (box.right + g), (int) (box.bottom + g)), 0);
+            } else {
+                drawD(c, dr, new Rect((int) box.left, (int) box.top, (int) box.right, (int) box.bottom), 0);
+            }
+            return out;
+        }
         Bitmap layer = Bitmap.createBitmap(sz, sz, Bitmap.Config.ARGB_8888);
         Canvas lc = new Canvas(layer);
         int dom = style != 3 && style != 5 && style != 6 ? vivid(dr) : 0;
@@ -276,10 +290,8 @@ final class Icons {
                 fillG(lc, box, shade(dom, -0.5f), shade(dom, -0.75f));
                 drawD(lc, mono != null ? mono : fg, rect, Color.WHITE);
                 break;
-            default:
-                // "Asli" tanpa putih: latar putih/pucat diganti gradasi warna utama ikon.
-                if (ad && !whiteish(bgD)) drawD(lc, bgD, rect, 0);
-                else fillG(lc, box, shade(dom, 0.1f), shade(dom, -0.3f));
+            default: // Asli (adaptif berlatar warna): latar + logo asli
+                drawD(lc, bgD, rect, 0);
                 drawD(lc, fg, rect, 0);
         }
         // mask bentuk

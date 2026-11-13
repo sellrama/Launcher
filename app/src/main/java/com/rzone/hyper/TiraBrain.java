@@ -35,7 +35,8 @@ import java.util.regex.Pattern;
 final class TiraBrain {
     /** Otak utama + otak cadangan, semuanya dari Nexray. Dicoba berurutan sampai ada jawaban. */
     static final String BASE = "https://api.nexray.eu.cc/ai/";
-    static final String[] BRAINS = {"claude", "gpt4", "gemini", "deepseek", "gpt", "copilot", "llama", "qwen"};
+    // Diuji lewat CI: claude, copilot & gemini aktif; deepseek kadang gagal (tetap dicoba terakhir).
+    static final String[] BRAINS = {"claude", "copilot", "gemini", "deepseek"};
     /** Otak terakhir yang berhasil (dicoba lebih dulu berikutnya). */
     private static volatile String lastGood = "claude";
     private static final Locale ID = new Locale("id", "ID");
@@ -160,6 +161,8 @@ final class TiraBrain {
                 Util.start(c, new Intent(c, HomeActivity.class));
             });
         }
+        Reply cz = customize(q);
+        if (cz != null) return cz;
         if ((m = Pattern.compile("^(?:buka|bukakan|jalankan|open|launch) (?:aplikasi |app )?(.+)$").matcher(q)).find()) {
             final String name = m.group(1).trim();
             final ResolveInfo ri = findApp(name);
@@ -176,6 +179,85 @@ final class TiraBrain {
         }
         if (q.matches("^(hai|halo|hello|hi|hey|p|assalamualaikum)( tira)?$")) {
             return new Reply("Hai! Aku Tira. Mau dibantu apa hari ini?", null);
+        }
+        return null;
+    }
+
+    private static final String[][] COLORS = {{"putih", "FFFFFFFF"}, {"hitam", "FF111111"}, {"merah", "FFFF4D4D"},
+            {"biru", "FF0A84FF"}, {"hijau", "FF30D158"}, {"kuning", "FFFFD60A"}, {"oranye", "FFFF9F0A"}, {"jingga", "FFFF9F0A"},
+            {"ungu", "FFB388FF"}, {"pink", "FFFF6FB1"}, {"merah muda", "FFFF6FB1"}, {"emas", "FFFFC400"}, {"cyan", "FF00E5FF"},
+            {"tosca", "FF1DE9B6"}, {"abu", "FF9AA0A6"}, {"biru muda", "FF7DD3FC"}};
+
+    private static Integer color(String q) {
+        for (int i = COLORS.length - 1; i >= 0; i--) // nama dua kata dicek lebih dulu
+            if (q.contains(COLORS[i][0])) return (int) Long.parseLong(COLORS[i][1], 16);
+        return null;
+    }
+
+    private Reply set(String key, int v, String msg) {
+        Prefs p = new Prefs(c);
+        p.touch(key);
+        p.si(key, v);
+        return new Reply(msg, null);
+    }
+
+    /** Kustomisasi tampilan lewat Tira (jam, warna, wallpaper, gaya UI, tata letak, tombol, AOD). */
+    private Reply customize(String q) {
+        Matcher m;
+        if ((m = Pattern.compile("^(?:ganti|ubah|pakai|set|atur)?\\s*(?:desain |model |gaya )?jam(?: lockscreen)?(?: ke| jadi| menjadi)? (.+)$").matcher(q)).find()
+                && !q.contains("warna") && !q.matches(".*\\d.*")) {
+            String n = m.group(1).trim();
+            for (int i = 0; i < Clock.N; i++) {
+                if (Clock.NAMES[i].toLowerCase(ID).contains(n) || n.contains(Clock.NAMES[i].toLowerCase(ID)))
+                    return set("sh", i, "Jam lockscreen diganti ke " + Clock.NAMES[i] + ".");
+            }
+            return new Reply("Desain jam \"" + n + "\" tidak ada. Contoh: Neon, Analog Klasik, iOS Tebal, Flip Retro, Terminal.", null);
+        }
+        if (q.contains("warna jam") || q.contains("warna angka jam")) {
+            Integer col = color(q);
+            if (col != null) return set("cc", col, "Warna jam diganti.");
+        }
+        if (q.contains("warna aksen") || q.contains("warna tema") || q.contains("warna utama")) {
+            Integer col = color(q);
+            if (col != null) return set("ac", col, "Warna aksen diganti.");
+        }
+        if ((m = Pattern.compile("^(?:ganti |ubah |pakai |pasang )?wallpaper(?: lockscreen| depth)?(?: ke| jadi)? (.+)$").matcher(q)).find()) {
+            String n = m.group(1).trim();
+            for (int i = 0; i < Scene.DEPTH_NAMES.length; i++) {
+                String dn = Scene.DEPTH_NAMES[i].toLowerCase(ID);
+                if (n.contains(dn) || dn.contains(n)) {
+                    int v = 0;
+                    for (int k = 1; k < Scene.VARIANTS.length; k++) if (n.contains(Scene.VARIANTS[k].toLowerCase(ID))) v = k;
+                    Prefs p = new Prefs(c);
+                    p.si("lm", 0);
+                    p.si("ld", i);
+                    p.si("ldv", v);
+                    return new Reply("Wallpaper lockscreen diganti ke " + Scene.DEPTH_NAMES[i] + " (" + Scene.VARIANTS[v] + ").", null);
+                }
+            }
+        }
+        if ((m = Pattern.compile("gaya (?:ui|panel|tampilan) (?:ke |jadi )?(.+)$").matcher(q)).find()) {
+            String n = m.group(1).trim();
+            for (int i = 0; i < UiStyle.NAMES.length; i++)
+                if (UiStyle.NAMES[i].toLowerCase(ID).contains(n) || n.contains(UiStyle.NAMES[i].toLowerCase(ID)))
+                    return set("ui", i, "Gaya UI diganti ke " + UiStyle.NAMES[i] + ".");
+        }
+        if ((m = Pattern.compile("tata letak (?:lockscreen |lock )?(?:ke |jadi )?(hyper|pixel|ios)").matcher(q)).find()) {
+            String n = m.group(1);
+            int v = n.equals("ios") ? 2 : n.equals("pixel") ? 1 : 0;
+            return set("lay", v, "Tata letak lockscreen diganti ke " + DepthView.LAYOUTS[v] + ".");
+        }
+        if (q.matches(".*\\b(aod|always on)\\b.*")) {
+            boolean off = q.matches(".*\\b(matikan|mati|off|nonaktifkan)\\b.*");
+            return set("la", off ? 0 : 1, off ? "AOD dimatikan." : "AOD aktif. Ketuk dua kali di lockscreen untuk masuk AOD.");
+        }
+        if (q.matches(".*\\b(sembunyikan|hilangkan|matikan|tampilkan|munculkan|nyalakan) (?:tombol )?(senter|kamera|tombol bawah)\\b.*")) {
+            boolean show = q.matches(".*\\b(tampilkan|munculkan|nyalakan)\\b.*");
+            return set("tb", show ? 1 : 0, show ? "Tombol bawah lockscreen ditampilkan." : "Tombol bawah lockscreen disembunyikan.");
+        }
+        if ((m = Pattern.compile("ukuran jam (\\d{2,3})").matcher(q)).find()) {
+            int v = Math.max(50, Math.min(150, Integer.parseInt(m.group(1))));
+            return set("cs", v, "Ukuran jam jadi " + v + "%.");
         }
         return null;
     }
@@ -310,7 +392,9 @@ final class TiraBrain {
         String b = body == null ? "" : body.trim();
         try {
             if (b.startsWith("{")) {
-                String s = extract(new JSONObject(b), 0);
+                JSONObject j = new JSONObject(b);
+                if (j.has("status") && !j.optBoolean("status", true)) return ""; // {"status":false,"error":...}
+                String s = extract(j, 0);
                 if (s != null) return s;
             } else if (b.startsWith("[")) {
                 String s = extract(new JSONArray(b), 0);

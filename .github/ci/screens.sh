@@ -50,9 +50,11 @@ done
 for SH in 0 2 5 7 9 12 13 16 19 20 21 22 23 24 25 26 27 28 29; do
   ci --ei os 0 --es set "sh=$SH,lay=1" --es open lock; shot clock_face_$SH 3
 done
-# AOD: ketuk dua kali di lockscreen
+# AOD: ketuk dua kali di lockscreen (jam mengecil & turun ke tengah)
 ci --ei os 1 --es set "la=1" --es open lock; sleep 4
 adb shell input tap 540 1200; sleep 0.12; adb shell input tap 540 1200; shot aod 3
+ci --ei os 2 --es open lock; sleep 4
+adb shell input tap 540 1200; sleep 0.12; adb shell input tap 540 1200; shot aod_ios 3
 # ikon di layar utama & drawer (cek tanpa latar putih)
 ci --ei os 1 --es open drawer; shot icons_drawer 4
 
@@ -60,6 +62,7 @@ ci --ei os 1 --es open drawer; shot icons_drawer 4
 ci --ei os 1 --es open store; shot store_illus 8
 adb shell input swipe 540 1800 540 700 300; shot store_illus_scroll 5
 adb shell input tap 800 330; shot store_online 12
+adb shell input keyevent KEYCODE_BACK; sleep 1
 
 # ---------- tema .zth uji (dibuat dengan Python)
 python3 .github/ci/make_zth.py /tmp/uji.zth && \

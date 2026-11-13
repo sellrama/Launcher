@@ -46,7 +46,9 @@ import java.util.function.Consumer;
 public class DepthView extends View implements SensorEventListener {
     static final String[] LAYOUTS = {"Hyper", "Pixel", "iOS"};
 
-    public Runnable onUnlock, onApps, onCamera, onSettings, onTorch, onScreenOff;
+    public Runnable onUnlock, onApps, onCamera, onSettings, onTorch, onScreenOff, onTira;
+    private boolean tiraBtn = true;
+    private float tiraPress;
     public Consumer<NotifListener.N> onNotif;
     /** Diisi LockActivity agar tombol senter menyala. */
     boolean torchOn;
@@ -177,6 +179,7 @@ public class DepthView extends View implements SensorEventListener {
         dtAction = q.gi("la");
         capsule = q.gi("dm") == 1;
         btnsOn = q.gb("tb");
+        tiraBtn = q.gb("ltb");
         leftBtn = q.gi("lbt");
         hintOn = q.gb("hs");
         lockIcon = q.gb("li");
@@ -348,6 +351,7 @@ public class DepthView extends View implements SensorEventListener {
     }
 
     private int hit(float x, float y) {
+        if (tiraBtn && Math.abs(y - btnY()) < d * 30 && Math.abs(x - getWidth() / 2f) < d * 30) return 3;
         if (!btnsOn) return 0;
         float r = d * 38;
         if (Math.abs(y - btnY()) > r) return 0;
@@ -421,7 +425,7 @@ public class DepthView extends View implements SensorEventListener {
                         else animP(0, null);
                     } else if (btn != 0 && up && hit(e.getX(), e.getY()) == btn) {
                         performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                        Runnable r = btn == 1 ? (leftBtn == 1 ? onTorch : onApps) : onCamera;
+                        Runnable r = btn == 3 ? onTira : btn == 1 ? (leftBtn == 1 ? onTorch : onApps) : onCamera;
                         if (r != null) r.run();
                     }
                 }
@@ -610,6 +614,54 @@ public class DepthView extends View implements SensorEventListener {
         c.drawRoundRect(rr, R * 0.12f, R * 0.12f, fp);
     }
 
+    /** Tombol Tira di tengah bawah lockscreen (di atas garis navigasi). */
+    private void drawTira(Canvas c, float w, float a) {
+        if (a <= 0.01f) return;
+        tiraPress += ((btn == 3 ? 1f : 0f) - tiraPress) * 0.35f;
+        float cx0 = w / 2f, cy0 = btnY(), r = d * 22 * (1 - tiraPress * 0.1f);
+        float t = nowT / 1000f;
+        fp.reset();
+        fp.setAntiAlias(true);
+        fp.setShader(new android.graphics.SweepGradient(cx0, cy0, new int[]{0xFF7C4DFF, 0xFF00E5FF, 0xFFFF4FA3, 0xFF7C4DFF}, null));
+        fp.setAlpha((int) (235 * a));
+        c.save();
+        c.rotate((t * 40) % 360, cx0, cy0);
+        c.drawCircle(cx0, cy0, r, fp);
+        c.restore();
+        fp.setShader(null);
+        fp.setColor(0xFF0E0F16);
+        fp.setAlpha((int) (200 * a));
+        c.drawCircle(cx0, cy0, r - d * 2.5f, fp);
+        // bintang 4 sudut (logo Tira)
+        float s = r * 0.55f * (1 + 0.06f * (float) Math.sin(t * 3));
+        android.graphics.Path st = new android.graphics.Path();
+        st.moveTo(cx0, cy0 - s);
+        st.quadTo(cx0 + s * 0.12f, cy0 - s * 0.12f, cx0 + s, cy0);
+        st.quadTo(cx0 + s * 0.12f, cy0 + s * 0.12f, cx0, cy0 + s);
+        st.quadTo(cx0 - s * 0.12f, cy0 + s * 0.12f, cx0 - s, cy0);
+        st.quadTo(cx0 - s * 0.12f, cy0 - s * 0.12f, cx0, cy0 - s);
+        fp.setShader(new LinearGradient(cx0 - s, cy0 - s, cx0 + s, cy0 + s, 0xFFB9A6FF, 0xFF7CF3FF, Shader.TileMode.CLAMP));
+        fp.setAlpha((int) (255 * a));
+        c.drawPath(st, fp);
+        fp.setShader(null);
+    }
+
+    /** AOD: tanggal & baterai kecil di bawah jam yang sudah mengecil ke tengah. */
+    private void drawAodInfo(Canvas c, float w, float h) {
+        float ea = aod * aod * (3 - 2 * aod);
+        float ch = (clockBottom - clockTop) * (1 - 0.38f * ea);
+        long mnt = System.currentTimeMillis() / 60000;
+        float bx = d * (float) (6 * Math.sin(mnt * 1.7)), by = d * (float) (10 * Math.cos(mnt * 1.3));
+        tp.reset();
+        tp.setAntiAlias(true);
+        tp.setTextAlign(Paint.Align.CENTER);
+        tp.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        tp.setTextSize(d * 15);
+        tp.setColor(ccolor);
+        tp.setAlpha((int) (230 * ea));
+        c.drawText(dateStr + (batt > 0 ? "  ·  " + batt + "%" : ""), w / 2 + bx, h * 0.40f + ch / 2 + d * 34 + by, tp);
+    }
+
     private void drawLockIcon(Canvas c, float lx, float ly, float a) {
         float lift = Math.min(1, p * 5) * 4 * d;
         fp.reset();
@@ -709,7 +761,7 @@ public class DepthView extends View implements SensorEventListener {
             tp.setTextSize(d * (layout == 2 ? 13 : 12));
             tp.setShadowLayer(8, 0, 2, Color.argb(140, 0, 0, 0));
             tp.setAlpha((int) (210 * a));
-            float hy = layout == 2 ? h - d * 52 : h - d * 128;
+            float hy = layout == 2 ? h - d * 44 : h - d * 128;
             if (layout == 1) hy = h - d * (fakeFp ? 98 : 112);
             c.drawText("Geser ke atas untuk membuka", w / 2, hy + (float) Math.sin(now / 340f) * 6 * d, tp);
         }
@@ -731,6 +783,8 @@ public class DepthView extends View implements SensorEventListener {
         else notifHits.clear();
         if (fakeFp) drawFingerprint(c, w, h, a);
         // ---------- tombol bawah ----------
+        if (tiraBtn) drawTira(c, w, a);
+        if (aod > 0.01f) drawAodInfo(c, w, h);
         if (btnsOn) {
             float by = btnY();
             for (int k = 0; k < 2; k++) {
@@ -802,7 +856,8 @@ public class DepthView extends View implements SensorEventListener {
         float lp = preview ? 0 : par;
         cx += (tx * lp + (float) Math.sin(now / 1700f) * 0.22f * par - cx) * Math.min(1, dt * 6);
         cy += (ty * lp + (float) Math.cos(now / 2100f) * 0.14f * par - cy) * Math.min(1, dt * 6);
-        aod += (aodT - aod) * Math.min(1, dt * 4);
+        aod += (aodT - aod) * Math.min(1, dt * 3.2f);
+        if (Math.abs(aodT - aod) < 0.004f) aod = aodT; // jangan menyisakan bayangan UI tipis di AOD
         for (int i = 0; i < 4; i++) roll[i] += dt / 0.75f;
         if (now - timeChk > 500) {
             timeChk = now;
@@ -819,11 +874,8 @@ public class DepthView extends View implements SensorEventListener {
             c.scale(ks, ks, w / 2, h);
         }
         c.translate(0, -slide);
-        if (aod > 0.01f) { // AOD: geser sedikit tiap menit agar layar tidak burn-in
-            long mnt = System.currentTimeMillis() / 60000;
-            c.translate(aod * d * (float) (6 * Math.sin(mnt * 1.7)), aod * d * (float) (10 * Math.cos(mnt * 1.3)));
-        }
-        c.drawRect(0, 0, w, h + slide + 1, black);
+        // latar hitam penuh (tidak ikut digeser, agar AOD benar-benar penuh layar)
+        c.drawRect(-w, -h, w * 2, h * 2 + slide, black);
         if (bg != null && !bg.isRecycled()) {
             c.save();
             c.translate(-cx * 9 * d, -cy * 9 * d);
@@ -835,8 +887,19 @@ public class DepthView extends View implements SensorEventListener {
         dst.set(w / 2 - w * 0.56f - cx * 9 * d, h / 2 - h * 0.56f - cy * 9 * d,
                 w / 2 + w * 0.56f - cx * 9 * d, h / 2 + h * 0.56f - cy * 9 * d);
         c.save();
-        c.translate(cx * 18 * d, cy * 18 * d);
-        if (ctilt != 0) c.rotate(ctilt, w / 2, 0.22f * h);
+        c.translate(cx * 18 * d * (1 - aod), cy * 18 * d * (1 - aod));
+        if (aod > 0) {
+            // AOD: jam mengecil & meluncur ke tengah layar (kebalikannya saat bangun),
+            // plus geser beberapa piksel tiap menit agar layar tidak burn-in.
+            float ea = aod * aod * (3 - 2 * aod);
+            float cy0 = (clockTop + clockBottom) / 2f;
+            float s = 1 - 0.38f * ea;
+            long mnt = System.currentTimeMillis() / 60000;
+            float bx = d * (float) (6 * Math.sin(mnt * 1.7)), by = d * (float) (10 * Math.cos(mnt * 1.3));
+            c.translate(bx * ea, (h * 0.40f - cy0) * ea + by * ea);
+            c.scale(s, s, w / 2f, cy0);
+        }
+        if (ctilt != 0) c.rotate(ctilt * (1 - aod), w / 2, 0.22f * h);
         drawClock(c, w, h, e);
         c.restore();
         if (aod < 0.99f) {

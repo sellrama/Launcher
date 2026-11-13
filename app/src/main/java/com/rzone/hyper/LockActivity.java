@@ -61,11 +61,10 @@ public class LockActivity extends Activity {
         v.onCamera = this::camera;
         v.onTorch = this::torch;
         v.onScreenOff = () -> ScreenOff.lock(this);
+        // Tira langsung di atas lockscreen; aplikasi yang dibuka Tira akan meminta buka kunci bila perlu.
+        v.onTira = () -> Util.start(this, new Intent(this, TiraActivity.class).putExtra("lock", true));
         v.onAod = on -> {
             // AOD: layar tetap menyala dengan kecerahan minimum; kembali normal saat dibangunkan.
-            WindowManager.LayoutParams lp = getWindow().getAttributes();
-            lp.screenBrightness = on ? 0.01f : WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
-            getWindow().setAttributes(lp);
             if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         };

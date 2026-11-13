@@ -25,6 +25,7 @@ jobs:
       - name: Cek API Tira (semua otak Nexray)
         continue-on-error: true
         run: |
+          echo "=== picsum"; curl -sS -m 20 "https://picsum.photos/v2/list?page=1&limit=2" -w "\nHTTP %{http_code}\n" | head -c 300; echo
           for b in claude gpt4 gemini deepseek gpt copilot llama qwen; do
             echo "=== $b"
             curl -sS -m 30 -G "https://api.nexray.eu.cc/ai/$b" --data-urlencode "text=Jawab satu kata: halo" -w "\nHTTP %{http_code}\n" | head -c 400; echo
