@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Hyper</string>
+    <string name="home_name">Hyper Launcher</string>
+    <string name="a11y_desc">Dipakai Hyper hanya untuk mematikan layar lewat gestur ketuk dua kali di layar utama atau lockscreen. Tidak membaca isi layar.</string>
+</resources>
