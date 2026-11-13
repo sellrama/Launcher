@@ -325,6 +325,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         NotifListener.onChange = this::refreshBadges;
         refreshBadges();
         if (loaded) root.post(this::playTransitions);
+        HotwordService.sync(this, true);
         if (!pr.iconSig().equals(loadedSig)) {
             IconPack.invalidate();
             reloadApps();
@@ -336,6 +337,7 @@ public class HomeActivity extends Activity implements AppCell.L {
     @Override
     protected void onPause() {
         super.onPause();
+        HotwordService.sync(this, false);
         if (dragging) endDrag();
     }
 
@@ -496,6 +498,10 @@ public class HomeActivity extends Activity implements AppCell.L {
     }
 
     void searchClick() {
+        if (search.tappedMic()) {
+            openTira(true); // mikrofon di search bar = Tira
+            return;
+        }
         if (sbs == 0) {
             Intent g = getPackageManager().getLaunchIntentForPackage("com.google.android.googlequicksearchbox");
             if (Util.start(this, new Intent(Intent.ACTION_WEB_SEARCH))) return;

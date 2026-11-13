@@ -40,6 +40,20 @@ final class SearchBar extends View {
         setContentDescription("Cari");
     }
 
+    float lastX = -1;
+
+    @Override
+    public boolean onTouchEvent(android.view.MotionEvent e) {
+        if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) lastX = e.getX();
+        return super.onTouchEvent(e);
+    }
+
+    /** Ketukan terakhir mengenai ikon mikrofon (pill Google)? */
+    boolean tappedMic() {
+        float h = getHeight(), w = getWidth();
+        return kind == 0 && lastX > w - h * 2.1f && lastX < w - h * 1.0f;
+    }
+
     @Override
     protected void onDraw(Canvas c) {
         float w = getWidth(), h = getHeight(), gy = h / 2f;

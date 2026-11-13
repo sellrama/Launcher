@@ -57,8 +57,32 @@ final class TiraBrain {
     // =========================================================== perintah lokal
 
     /** Perintah yang bisa dijawab langsung. null bila harus ditanyakan ke AI. */
+    /** Pola kata panggil: "hai tira", "halo tira", "hallo tira", "hey tira", "oke tira", "tira". */
+    static final Pattern WAKE = Pattern.compile("^\\s*(?:(?:ha+i+|ha+l+o+|hel+o+|he+y|he+i|oke?|ok)\\s*,?\\s*)?(?:tira|tiara|tyra|teera)\\b[\\s,.!]*",
+            Pattern.CASE_INSENSITIVE);
+
+    /** Buang kata panggil di depan kalimat. */
+    static String stripWake(String q) {
+        Matcher m = WAKE.matcher(q);
+        return m.find() ? q.substring(m.end()).trim() : q.trim();
+    }
+
+    /** Teks setelah kata panggil (null bila tidak ada kata panggil). */
+    static String afterWake(String q) {
+        Matcher m = Pattern.compile("\\b(?:ha+i+|ha+l+o+|hel+o+|he+y|he+i|oke?|ok)\\s*,?\\s*(?:tira|tiara|tyra)\\b[\\s,.!]*",
+                Pattern.CASE_INSENSITIVE).matcher(q);
+        return m.find() ? q.substring(m.end()).trim() : null;
+    }
+
+    static boolean hasWake(String q) {
+        return Pattern.compile("\\b(?:ha+i+|ha+l+o+|hel+o+|he+y|he+i|oke?|ok)\\s*,?\\s*(?:tira|tiara|tyra)\\b", Pattern.CASE_INSENSITIVE)
+                .matcher(q).find();
+    }
+
     Reply local(String raw) {
-        final String q = raw.trim().toLowerCase(ID).replaceAll("[?!.,]+$", "");
+        String stripped = stripWake(raw);
+        if (stripped.isEmpty()) return new Reply("Ya, Tira di sini. Mau dibantu apa?", null);
+        final String q = stripped.toLowerCase(ID).replaceAll("[?!.,]+$", "");
         Matcher m;
         if (q.matches(".*\\b(jam berapa|pukul berapa|sekarang jam)\\b.*")) {
             return new Reply("Sekarang jam " + new SimpleDateFormat("HH:mm", ID).format(new Date()) + ".", null);
@@ -105,9 +129,15 @@ final class TiraBrain {
             final String num = m.group(1).replaceAll("[ \\-]", "");
             return new Reply("Membuka panggilan ke " + num + ".", () -> Util.start(c, new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + num))));
         }
-        if ((m = Pattern.compile("^(?:cari|carikan|google|search)(?: di (?:google|web|internet))? (.+)$").matcher(q)).find()) {
+        if ((m = Pattern.compile("^(?:cari|carikan|google|search)(?: di (?:google|web|internet))? (?!video|vidio|film|klip)(.+)$").matcher(q)).find()) {
             final String s = m.group(1);
             return new Reply("Mencari \"" + s + "\"...", () -> Util.webSearch(c, s));
+        }
+        if ((m = Pattern.compile("^(?:putar|putarkan|play|buka|bukakan|tonton|nonton|cari|carikan|tampilkan)(?: aku| saya)? (?:video|vidio|film|klip)(?: tentang| soal| dari)? ?(.*)$").matcher(q)).find()
+                || (m = Pattern.compile("^(?:tonton|nonton) (.+)$").matcher(q)).find()) {
+            final String s = m.group(1).trim();
+            if (s.isEmpty()) return new Reply("Membuka YouTube.", () -> openYoutube(""));
+            return new Reply("Memutar video \"" + s + "\" di YouTube.", () -> openYoutube(s));
         }
         if ((m = Pattern.compile("^(?:putar|putarkan|play) (?:lagu |musik )?(.+)$").matcher(q)).find()) {
             final String s = m.group(1);
@@ -141,9 +171,23 @@ final class TiraBrain {
             return new Reply("Aku tidak menemukan aplikasi \"" + name + "\" di HP kamu.", null);
         }
         if (q.matches("^(hai|halo|hello|hi|hey|p|assalamualaikum)( tira)?$")) {
-            return new Reply("Hai! Aku Tira 👋 Mau dibantu apa hari ini?", null);
+            return new Reply("Hai! Aku Tira. Mau dibantu apa hari ini?", null);
         }
         return null;
+    }
+
+    /** Buka/cari video di YouTube (aplikasi bila ada, kalau tidak lewat peramban). */
+    private void openYoutube(String q) {
+        if (q.isEmpty()) {
+            Intent li = c.getPackageManager().getLaunchIntentForPackage("com.google.android.youtube");
+            if (li != null && Util.start(c, li)) return;
+            Util.start(c, new Intent(Intent.ACTION_VIEW, Uri.parse("https://m.youtube.com")));
+            return;
+        }
+        Intent yt = new Intent(Intent.ACTION_SEARCH).setPackage("com.google.android.youtube")
+                .putExtra(android.app.SearchManager.QUERY, q);
+        if (Util.start(c, yt)) return;
+        Util.start(c, new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=" + Uri.encode(q))));
     }
 
     private ResolveInfo findApp(String name) {
@@ -180,10 +224,11 @@ final class TiraBrain {
     // =========================================================== AI (jaringan, panggil di thread latar)
 
     String ask(String q) {
+        q = stripWake(q);
         StringBuilder p = new StringBuilder();
         p.append("Kamu adalah Tira, asisten AI pribadi di HP pengguna (bagian dari launcher RZONE Hyper buatan RZONEDEV). ")
                 .append("Jawab dalam bahasa Indonesia yang santai, ramah, jelas dan singkat (maksimal 4 kalimat kecuali diminta detail). ")
-                .append("Jangan pakai format markdown. ")
+                .append("Jangan pakai format markdown dan jangan pakai emoji. ")
                 .append("Waktu lokal pengguna sekarang: ")
                 .append(new SimpleDateFormat("EEEE, d MMMM yyyy, HH:mm", ID).format(new Date()))
                 .append(" (zona ").append(java.util.TimeZone.getDefault().getID()).append(").\n");
@@ -272,7 +317,15 @@ final class TiraBrain {
         return null;
     }
 
+    private static final Pattern EMOJI = Pattern.compile(
+            "[\\x{1F000}-\\x{1FAFF}\\x{2600}-\\x{27BF}\\x{2B00}-\\x{2BFF}\\x{1F1E6}-\\x{1F1FF}\\x{FE0E}\\x{FE0F}\\x{200D}\\x{20E3}\\x{E0020}-\\x{E007F}]");
+
+    /** Tanpa emoji di seluruh UI: buang emoji dari jawaban AI. */
+    static String noEmoji(String s) {
+        return EMOJI.matcher(s).replaceAll("").replaceAll("[ \\t]{2,}", " ").replaceAll("(?m)^\\s+$", "").trim();
+    }
+
     static String clean(String s) {
-        return s.replace("**", "").replace("__", "").replaceAll("(?m)^#{1,6}\\s*", "").replaceAll("^Tira:\\s*", "").trim();
+        return noEmoji(s).replace("**", "").replace("__", "").replaceAll("(?m)^#{1,6}\\s*", "").replaceAll("^Tira:\\s*", "").trim();
     }
 }

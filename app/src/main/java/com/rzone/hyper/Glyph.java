@@ -10,7 +10,7 @@ import android.view.View;
 /** Ikon garis sederhana untuk menu. */
 final class Glyph extends View {
     static final int INFO = 0, TRASH = 1, IMAGE = 2, GEAR = 3, SEARCH = 4, FLASH = 5, STAR = 6, EYE_OFF = 7,
-            PENCIL = 8, LOCK = 9, GRID = 10, PLUS = 11;
+            PENCIL = 8, LOCK = 9, GRID = 10, PLUS = 11, MIC = 12, SEND = 13, CLOSE = 14, BACK = 15, PLAY = 16, CHECK = 17;
     private final float d;
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final int t;
@@ -142,6 +142,47 @@ final class Glyph extends View {
             case PLUS:
                 c.drawLine(cx - rr * 0.7f, cy, cx + rr * 0.7f, cy, p);
                 c.drawLine(cx, cy - rr * 0.7f, cx, cy + rr * 0.7f, p);
+                break;
+            case MIC:
+                r.set(cx - rr * 0.32f, cy - rr * 0.95f, cx + rr * 0.32f, cy + rr * 0.25f);
+                c.drawRoundRect(r, rr * 0.32f, rr * 0.32f, p);
+                r.set(cx - rr * 0.62f, cy - rr * 0.45f, cx + rr * 0.62f, cy + rr * 0.55f);
+                c.drawArc(r, 0, 180, false, p);
+                c.drawLine(cx, cy + rr * 0.55f, cx, cy + rr * 0.9f, p);
+                c.drawLine(cx - rr * 0.35f, cy + rr * 0.9f, cx + rr * 0.35f, cy + rr * 0.9f, p);
+                break;
+            case SEND: {
+                Path s = new Path();
+                s.moveTo(cx - rr * 0.8f, cy - rr * 0.75f);
+                s.lineTo(cx + rr * 0.85f, cy);
+                s.lineTo(cx - rr * 0.8f, cy + rr * 0.75f);
+                s.lineTo(cx - rr * 0.45f, cy);
+                s.close();
+                p.setStyle(Paint.Style.FILL);
+                c.drawPath(s, p);
+                break;
+            }
+            case CLOSE:
+                c.drawLine(cx - rr * 0.6f, cy - rr * 0.6f, cx + rr * 0.6f, cy + rr * 0.6f, p);
+                c.drawLine(cx + rr * 0.6f, cy - rr * 0.6f, cx - rr * 0.6f, cy + rr * 0.6f, p);
+                break;
+            case BACK:
+                c.drawLine(cx - rr * 0.7f, cy, cx + rr * 0.75f, cy, p);
+                c.drawLine(cx - rr * 0.7f, cy, cx - rr * 0.1f, cy - rr * 0.6f, p);
+                c.drawLine(cx - rr * 0.7f, cy, cx - rr * 0.1f, cy + rr * 0.6f, p);
+                break;
+            case PLAY: {
+                Path s = new Path();
+                s.moveTo(cx - rr * 0.45f, cy - rr * 0.7f);
+                s.lineTo(cx + rr * 0.7f, cy);
+                s.lineTo(cx - rr * 0.45f, cy + rr * 0.7f);
+                s.close();
+                c.drawPath(s, p);
+                break;
+            }
+            case CHECK:
+                c.drawLine(cx - rr * 0.7f, cy, cx - rr * 0.15f, cy + rr * 0.55f, p);
+                c.drawLine(cx - rr * 0.15f, cy + rr * 0.55f, cx + rr * 0.75f, cy - rr * 0.6f, p);
                 break;
             default: // SEARCH
                 c.drawCircle(cx - rr * 0.15f, cy - rr * 0.15f, rr * 0.6f, p);

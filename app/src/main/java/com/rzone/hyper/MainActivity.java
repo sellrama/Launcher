@@ -653,8 +653,9 @@ public class MainActivity extends Activity {
             col.addView(tv(title(p), 30, true, TEXT));
         } else if (look == 1) {
             // Material: panah kembali dalam lingkaran + judul besar
-            TextView back = tv("←", 22, false, TEXT);
-            back.setGravity(Gravity.CENTER);
+            FrameLayout back = new FrameLayout(this);
+            back.addView(new Glyph(this, Glyph.BACK, TEXT), new FrameLayout.LayoutParams((int) (d * 22), (int) (d * 22), Gravity.CENTER));
+            back.setContentDescription("Kembali");
             back.setBackground(round(SURF, 24));
             back.setOnClickListener(v -> onBackPressed());
             col.addView(back, new LinearLayout.LayoutParams((int) (d * 44), (int) (d * 44)));
@@ -707,6 +708,9 @@ public class MainActivity extends Activity {
             case "cos":
                 pgCustomOs();
                 break;
+            case "tira":
+                pgTira();
+                break;
             case "abt":
                 pgAbout();
                 break;
@@ -753,6 +757,8 @@ public class MainActivity extends Activity {
                 return "Animasi & Gestur";
             case "cos":
                 return "Studio Custom OS";
+            case "tira":
+                return "Tira";
             default:
                 return "Reset & Info";
         }
@@ -774,14 +780,13 @@ public class MainActivity extends Activity {
                 {"Launcher", "Dock & pencarian", "Panel dock, jumlah ikon, gaya search bar", Glyph.SEARCH, "dock", "dock search bar cari"},
                 {"Launcher", "App drawer", "Kolom, urutan, App Library, aplikasi tersembunyi", Glyph.GRID, "drw", "drawer sembunyikan kategori library"},
                 {"Launcher", "Animasi & gestur", "Kecepatan, geser bawah, ketuk dua kali", Glyph.GEAR, "anim", "animasi gestur ketuk geser kecepatan"},
-                {"Asisten", "Tira (Asisten AI)", "Tanya apa saja, perintah suara, buka aplikasi", Glyph.STAR, "tira", "ai asisten tira suara chat"},
+                {"Asisten", "Tira (Asisten AI)", "\"Hai Tira\", tombol tengah, perintah suara, video", Glyph.MIC, "tira", "ai asisten tira suara chat hai halo video"},
                 {"Lainnya", "Reset & info", "Powered by RZONEDEV · gratis", Glyph.INFO, "abt", "reset info versi tentang"},
         };
     }
 
     private void open(String pg) {
-        if (pg.equals("tira")) startActivity(new Intent(this, TiraActivity.class));
-        else show(pg);
+        show(pg);
     }
 
     private LinearLayout mainBody;
@@ -1084,15 +1089,90 @@ public class MainActivity extends Activity {
         return b;
     }
 
+    // =================================================================== Tira
+
+    private static final int RQ_ASSIST = 11, RQ_MIC = 12;
+
+    private void pgTira() {
+        LinearLayout c = card();
+        c.addView(lab("Asisten AI pribadimu"));
+        c.addView(tv("Tanya apa saja, atau suruh Tira membuka aplikasi, memutar video YouTube, menyalakan senter, "
+                + "mengatur alarm/timer, mengganti tema, dan lainnya.", 12.5f, false, MUTED));
+        LinearLayout b = new LinearLayout(this);
+        b.setPadding(0, (int) (d * 12), 0, 0);
+        b.addView(button("Buka Tira", () -> startActivity(new Intent(this, TiraActivity.class))), new LinearLayout.LayoutParams(0, -2, 1));
+        b.addView(new View(this), new LinearLayout.LayoutParams((int) (d * 8), 1));
+        b.addView(button("Bicara ke Tira", () -> startActivity(new Intent(this, TiraActivity.class).putExtra("voice", true))),
+                new LinearLayout.LayoutParams(0, -2, 1));
+        c.addView(b);
+        add(c);
+
+        boolean mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        LinearLayout w = card();
+        w.addView(lab("Panggil dengan suara: \"Hai Tira\" / \"Halo Tira\""));
+        w.addView(tv("Tira aktif otomatis saat mendengar kata panggil. Kalimat sesudahnya langsung dijalankan, "
+                + "misalnya \"Hai Tira, putar video kucing lucu\". Mendengarkan terus menambah pemakaian baterai.", 12, false, MUTED));
+        chips(w, null, "tw", false, () -> {
+            if (pr.gi("tw") > 0 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, RQ_MIC);
+            HotwordService.sync(this, false);
+        }, "Mati", "Saat di layar utama", "Selalu (layar menyala)");
+        if (!mic) {
+            TextView t = tv("Izin mikrofon belum diberikan.", 12, true, 0xFFFF8A80);
+            t.setPadding(0, (int) (d * 8), 0, 0);
+            w.addView(t);
+        }
+        togK(w, "Tira menjawab dengan suara", "Saat kamu bertanya lewat suara", "tts", null);
+        add(w);
+
+        section("Tombol tengah");
+        row("Jadikan Tira asisten digital", "Tekan lama tombol Home/tengah (atau gestur asisten) untuk membuka Tira",
+                Glyph.STAR, this::makeAssistant);
+        row("Ketuk ikon mikrofon di search bar", "Pill Google di layar utama: ketuk mikrofon = bicara ke Tira", Glyph.MIC,
+                () -> show("dock"));
+        row("Gestur ketuk dua kali", "Atur \"Ketuk dua kali di area kosong\" ke Tira", Glyph.GEAR, () -> show("anim"));
+        if (!mic) row("Izinkan mikrofon", "Dibutuhkan untuk perintah suara & \"Hai Tira\"", Glyph.MIC,
+                () -> requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, RQ_MIC));
+    }
+
+    private void makeAssistant() {
+        if (Build.VERSION.SDK_INT >= 29) {
+            RoleManager rm = getSystemService(RoleManager.class);
+            if (rm != null && rm.isRoleAvailable(RoleManager.ROLE_ASSISTANT) && !rm.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
+                try {
+                    startActivityForResult(rm.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT), RQ_ASSIST);
+                    return;
+                } catch (Exception ignored) {
+                }
+            }
+            if (rm != null && rm.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
+                Toast.makeText(this, "Tira sudah jadi asisten digital", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+        Toast.makeText(this, "Pilih \"Hyper\" sebagai Aplikasi asisten digital", Toast.LENGTH_LONG).show();
+        if (!Util.start(this, new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)))
+            Util.start(this, new Intent("android.settings.MANAGE_DEFAULT_APPS_SETTINGS"));
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int rq, String[] p, int[] g) {
+        super.onRequestPermissionsResult(rq, p, g);
+        if (rq == RQ_MIC) {
+            HotwordService.sync(this, false);
+            if (page.equals("tira")) show("tira");
+        }
+    }
+
     // =================================================================== aktivasi
 
     private void refresh() {
         if (statusTv == null) return;
-        String s = "Izin overlay: " + (Settings.canDrawOverlays(this) ? "aktif ✓" : "belum")
-                + "\nLockscreen: " + (pr.enabled() ? "aktif ✓" : "mati")
-                + "\nLauncher default: " + (Util.isDefaultLauncher(this) ? "Hyper ✓" : "bukan")
-                + "\nAkses notifikasi: " + (NotifListener.granted(this) ? "aktif ✓" : "belum")
-                + "\nMatikan layar (aksesibilitas): " + (ScreenOff.enabled(this) ? "aktif ✓" : "belum");
+        String s = "Izin overlay: " + (Settings.canDrawOverlays(this) ? "aktif" : "belum")
+                + "\nLockscreen: " + (pr.enabled() ? "aktif" : "mati")
+                + "\nLauncher default: " + (Util.isDefaultLauncher(this) ? "Hyper" : "bukan")
+                + "\nAkses notifikasi: " + (NotifListener.granted(this) ? "aktif" : "belum")
+                + "\nMatikan layar (aksesibilitas): " + (ScreenOff.enabled(this) ? "aktif" : "belum");
         statusTv.setText(s);
     }
 
@@ -1688,6 +1768,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(final int rq, int rs, Intent data) {
         super.onActivityResult(rq, rs, data);
+        if (rq == RQ_ASSIST) {
+            Toast.makeText(this, rs == RESULT_OK ? "Tira jadi asisten digital" : "Asisten digital tidak diubah", Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (rq == RQ_ROLE) {
             Toast.makeText(this, Util.isDefaultLauncher(this) ? "Hyper jadi launcher default" : "Launcher tidak diubah",
                     Toast.LENGTH_SHORT).show();

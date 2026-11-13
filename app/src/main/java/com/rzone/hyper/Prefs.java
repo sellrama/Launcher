@@ -58,6 +58,9 @@ public class Prefs {
         d("ik", 0); d("is", 0);
         // ---------- animasi & gestur ----------
         d("as", 100); d("sg", 0); d("dt", 0);
+        // ---------- Tira ----------
+        d("tw", 0);  // kata panggil "Hai Tira": 0 mati, 1 di layar utama, 2 selalu
+        d("tts", 1); // Tira menjawab dengan suara bila ditanya lewat suara
 
         THEME_KEYS = new String[]{"ui", "ac", "cs", "cy", "sh", "cc", "cg", "h24", "co", "csd", "ct",
                 "cl", "lay", "la", "dm", "tb", "lbt", "hs", "li", "bs", "ffp", "nlk", "hd", "hb", "wp",

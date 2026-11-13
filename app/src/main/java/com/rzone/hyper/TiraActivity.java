@@ -111,13 +111,11 @@ public class TiraActivity extends Activity {
         bl.leftMargin = (int) (d * 8);
         head.addView(badge, bl);
         head.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
-        TextView x = new TextView(this);
-        x.setText("✕");
-        x.setTextColor(0xAAFFFFFF);
-        x.setTextSize(18);
-        x.setPadding((int) (d * 12), (int) (d * 6), (int) (d * 12), (int) (d * 6));
+        FrameLayout x = new FrameLayout(this);
+        x.addView(new Glyph(this, Glyph.CLOSE, 0xCCFFFFFF), new FrameLayout.LayoutParams((int) (d * 18), (int) (d * 18), Gravity.CENTER));
         x.setOnClickListener(v -> close());
-        head.addView(x);
+        x.setContentDescription("Tutup");
+        head.addView(x, new LinearLayout.LayoutParams((int) (d * 44), (int) (d * 44)));
         sheet.addView(head);
 
         // percakapan
@@ -191,12 +189,12 @@ public class TiraActivity extends Activity {
             return false;
         });
         in.addView(input, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView mic = roundBtn("🎤");
+        View mic = roundBtn(Glyph.MIC, "Bicara");
         mic.setOnClickListener(v -> listen());
         LinearLayout.LayoutParams ml = new LinearLayout.LayoutParams((int) (d * 48), (int) (d * 48));
         ml.leftMargin = (int) (d * 8);
         in.addView(mic, ml);
-        TextView snd = roundBtn("➤");
+        View snd = roundBtn(Glyph.SEND, "Kirim");
         snd.setOnClickListener(v -> send(input.getText().toString(), false));
         LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams((int) (d * 48), (int) (d * 48));
         sl.leftMargin = (int) (d * 6);
@@ -212,7 +210,7 @@ public class TiraActivity extends Activity {
         });
         setContentView(root);
 
-        bubble("Hai, aku Tira 👋\nMau tanya apa, atau suruh aku buka aplikasi, nyalakan senter, atur alarm?", false);
+        bubble("Hai, aku Tira.\nTanya apa saja, atau suruh aku buka aplikasi, putar video, nyalakan senter, atur alarm.", false);
         state(TiraWave.IDLE);
 
         tts = new TextToSpeech(getApplicationContext(), st -> {
@@ -228,17 +226,30 @@ public class TiraActivity extends Activity {
         sheet.setTranslationY(d * 500);
         sheet.animate().translationY(0).setDuration(420).setInterpolator(new DecelerateInterpolator(2.4f)).start();
 
-        String ci = getIntent().getStringExtra("ci_q");
-        if (ci != null && !ci.isEmpty()) h.postDelayed(() -> send(ci, false), 500);
-        else if (getIntent().getBooleanExtra("voice", false)) h.postDelayed(this::listen, 450);
+        HotwordService.paused = true;
+        handle(getIntent());
     }
 
-    private TextView roundBtn(String t) {
-        TextView b = new TextView(this);
-        b.setText(t);
-        b.setTextSize(18);
-        b.setTextColor(Color.WHITE);
-        b.setGravity(Gravity.CENTER);
+    /** Perintah dari luar: "cmd" (kalimat setelah "Hai Tira"), "voice" (langsung mendengar), "ci_q" (uji CI). */
+    private void handle(Intent in) {
+        if (in == null) return;
+        String ci = in.getStringExtra("ci_q");
+        String cmd = in.getStringExtra("cmd");
+        if (cmd != null && !cmd.isEmpty()) h.postDelayed(() -> send(cmd, true), 450);
+        else if (ci != null && !ci.isEmpty()) h.postDelayed(() -> send(ci, false), 500);
+        else if (in.getBooleanExtra("voice", false)) h.postDelayed(this::listen, 450);
+    }
+
+    @Override
+    protected void onNewIntent(Intent in) {
+        super.onNewIntent(in);
+        handle(in);
+    }
+
+    private View roundBtn(int glyph, String desc) {
+        FrameLayout b = new FrameLayout(this);
+        b.setContentDescription(desc);
+        b.addView(new Glyph(this, glyph, Color.WHITE), new FrameLayout.LayoutParams((int) (d * 22), (int) (d * 22), Gravity.CENTER));
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF7C4DFF, 0xFF00B8D4});
         g.setShape(GradientDrawable.OVAL);
         b.setBackground(g);
@@ -337,9 +348,10 @@ public class TiraActivity extends Activity {
         }, "tira").start();
     }
 
-    private void answer(String a) {
+    private void answer(String raw) {
+        final String a = TiraBrain.noEmoji(raw);
         bubble(a, false);
-        if (speakNext && ttsReady) {
+        if (speakNext && ttsReady && new Prefs(this).gb("tts")) {
             state(TiraWave.SPEAK);
             tts.speak(a, TextToSpeech.QUEUE_FLUSH, null, "tira");
             h.postDelayed(() -> {
@@ -394,7 +406,7 @@ public class TiraActivity extends Activity {
                 public void onError(int e) {
                     state(TiraWave.IDLE);
                     hint.setText(e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
-                            ? "Tira tidak mendengar apa-apa. Ketuk 🎤 lagi." : "Mikrofon bermasalah, coba ketik saja.");
+                            ? "Tira tidak mendengar apa-apa. Ketuk tombol mikrofon lagi." : "Mikrofon bermasalah, coba ketik saja.");
                 }
 
                 @Override
@@ -480,6 +492,7 @@ public class TiraActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        HotwordService.paused = false;
         if (sr != null) sr.destroy();
         if (tts != null) tts.shutdown();
         h.removeCallbacksAndMessages(null);
