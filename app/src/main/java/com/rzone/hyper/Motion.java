@@ -42,7 +42,7 @@ final class Motion {
     static int colorOf(Bitmap b) {
         if (b == null || b.isRecycled()) return 0xFF2A2D36;
         try {
-            int c = Icons.dominant(new BitmapDrawable(null, b));
+            int c = Icons.vivid(new BitmapDrawable(null, b));
             // sedikit digelapkan agar terlihat seperti latar aplikasi
             return UiStyle.mix(c, 0xFF101114, 0.85f);
         } catch (Exception e) {

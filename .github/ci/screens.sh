@@ -47,9 +47,14 @@ for OS in 1 2 0; do
 done
 
 # beberapa desain jam
-for SH in 0 3 6 9 12 15 18 19; do
-  ci --ei os 0 --es set "sh=$SH" --es open lock; shot clock_face_$SH 4
+for SH in 0 2 5 7 9 12 13 16 19 20 21 22 23 24 25 26 27 28 29; do
+  ci --ei os 0 --es set "sh=$SH,lay=1" --es open lock; shot clock_face_$SH 3
 done
+# AOD: ketuk dua kali di lockscreen
+ci --ei os 1 --es set "la=1" --es open lock; sleep 4
+adb shell input tap 540 1200; sleep 0.12; adb shell input tap 540 1200; shot aod 3
+# ikon di layar utama & drawer (cek tanpa latar putih)
+ci --ei os 1 --es open drawer; shot icons_drawer 4
 
 adb logcat -d -b crash > $OUT/crash.txt
 adb logcat -d -s AndroidRuntime:E Hyper:* > $OUT/runtime.txt

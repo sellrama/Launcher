@@ -115,7 +115,7 @@ public class DepthView extends View implements SensorEventListener {
             public boolean onDoubleTap(MotionEvent e) {
                 if (drag || btn != 0 || aodT > 0.5f) return false;
                 if (dtAction == 1) {
-                    aodT = 1;
+                    setAod(true);
                     performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK);
                 } else if (dtAction == 2 && onScreenOff != null) {
                     onScreenOff.run();
@@ -147,6 +147,19 @@ public class DepthView extends View implements SensorEventListener {
 
     UiStyle style() {
         return us;
+    }
+
+    /** Dipanggil saat AOD menyala/mati (LockActivity mengatur kecerahan & layar tetap menyala). */
+    public java.util.function.Consumer<Boolean> onAod;
+
+    void setAod(boolean on) {
+        aodT = on ? 1 : 0;
+        if (onAod != null) onAod.accept(on);
+        invalidate();
+    }
+
+    boolean inAod() {
+        return aodT > 0.5f;
     }
 
     public void cfg() {
@@ -222,7 +235,7 @@ public class DepthView extends View implements SensorEventListener {
     public void reset() {
         if (anim != null) anim.cancel();
         p = 0;
-        aodT = 0;
+        if (aodT > 0) setAod(false);
         aod = 0;
         fpOk = false;
         fpTouch = false;
@@ -357,8 +370,10 @@ public class DepthView extends View implements SensorEventListener {
         invalidate();
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
-                if (aodT > 0.5f) {
-                    aodT = 0;
+                // Perbaikan: dulu ketukan kedua yang menyalakan AOD langsung dianggap "bangunkan",
+                // jadi AOD tidak pernah tampil. Sekarang hanya bangun bila AOD sudah benar-benar tampil.
+                if (aodT > 0.5f && aod > 0.6f) {
+                    setAod(false);
                     woke = true;
                     return true;
                 }
@@ -466,7 +481,7 @@ public class DepthView extends View implements SensorEventListener {
     }
 
     private boolean analogFace() {
-        return cshape == 4 || cshape == 5 || cshape == 6 || cshape == 7;
+        return cshape == 4 || cshape == 5 || cshape == 6 || cshape == 7 || cshape == 23;
     }
 
     private void drawClock(Canvas c, float w, float h, float e) {
@@ -804,6 +819,10 @@ public class DepthView extends View implements SensorEventListener {
             c.scale(ks, ks, w / 2, h);
         }
         c.translate(0, -slide);
+        if (aod > 0.01f) { // AOD: geser sedikit tiap menit agar layar tidak burn-in
+            long mnt = System.currentTimeMillis() / 60000;
+            c.translate(aod * d * (float) (6 * Math.sin(mnt * 1.7)), aod * d * (float) (10 * Math.cos(mnt * 1.3)));
+        }
         c.drawRect(0, 0, w, h + slide + 1, black);
         if (bg != null && !bg.isRecycled()) {
             c.save();

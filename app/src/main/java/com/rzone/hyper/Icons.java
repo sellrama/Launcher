@@ -22,7 +22,7 @@ import android.os.Build;
 /** Pembuat ikon: bentuk (mask) + gaya. */
 final class Icons {
     static final String[] SHAPES = {"Lingkaran", "Squircle", "Persegi", "Tetesan", "Heksagon", "Clover"};
-    static final String[] STYLES = {"Asli", "Gradien", "Putih", "Gelap", "Bertema", "Kaca", "Neon", "Glossy", "Siluet"};
+    static final String[] STYLES = {"Asli", "Gradien", "Berwarna", "Gelap", "Bertema", "Kaca", "Neon", "Glossy", "Siluet"};
 
     private Icons() {
     }
@@ -110,6 +110,64 @@ final class Icons {
         return Color.rgb((int) (r / ws), (int) (g / ws), (int) (b / ws));
     }
 
+    /**
+     * Warna paling menonjol (bukan rata-rata): histogram hue dari piksel jenuh.
+     * Ikon multi-warna (mis. Google) tidak lagi menjadi cokelat keruh.
+     */
+    static int vivid(Drawable dr) {
+        Bitmap t = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
+        try {
+            dr.setBounds(0, 0, 32, 32);
+            dr.draw(new Canvas(t));
+        } catch (Exception e) {
+            t.recycle();
+            return 0xFF3A4150;
+        }
+        int[] px = new int[1024];
+        t.getPixels(px, 0, 32, 0, 0, 32, 32);
+        t.recycle();
+        float[] w = new float[12], r = new float[12], g = new float[12], b = new float[12];
+        float[] hsv = new float[3];
+        for (int p : px) {
+            if (Color.alpha(p) < 160) continue;
+            Color.colorToHSV(p, hsv);
+            if (hsv[1] < 0.28f || hsv[2] < 0.25f) continue;
+            int bin = (int) (hsv[0] / 30f) % 12;
+            float k = hsv[1] * hsv[2];
+            w[bin] += k;
+            r[bin] += Color.red(p) * k;
+            g[bin] += Color.green(p) * k;
+            b[bin] += Color.blue(p) * k;
+        }
+        int best = -1;
+        for (int i = 0; i < 12; i++) if (w[i] > 0 && (best < 0 || w[i] > w[best])) best = i;
+        if (best < 0 || w[best] < 4) return 0xFF3A4150; // ikon abu-abu/hitam-putih → batu tulis gelap
+        return Color.rgb((int) (r[best] / w[best]), (int) (g[best] / w[best]), (int) (b[best] / w[best]));
+    }
+
+    /** Apakah lapisan latar ikon adaptif berwarna putih/terang pucat? */
+    static boolean whiteish(Drawable bg) {
+        if (bg == null) return false;
+        Bitmap t = Bitmap.createBitmap(12, 12, Bitmap.Config.ARGB_8888);
+        try {
+            bg.setBounds(0, 0, 12, 12);
+            bg.draw(new Canvas(t));
+        } catch (Exception e) {
+            t.recycle();
+            return false;
+        }
+        int[] px = new int[144];
+        t.getPixels(px, 0, 12, 0, 0, 12, 12);
+        t.recycle();
+        int light = 0;
+        float[] hsv = new float[3];
+        for (int p : px) {
+            Color.colorToHSV(p, hsv);
+            if (Color.alpha(p) > 200 && hsv[2] > 0.86f && hsv[1] < 0.16f) light++;
+        }
+        return light > 100;
+    }
+
     private static int shade(int c, float f) {
         return f >= 0 ? UiStyle.mix(Color.WHITE, c, f) : UiStyle.mix(Color.BLACK, c, -f);
     }
@@ -175,14 +233,14 @@ final class Icons {
         }
         Bitmap layer = Bitmap.createBitmap(sz, sz, Bitmap.Config.ARGB_8888);
         Canvas lc = new Canvas(layer);
-        int dom = (style == 1 || style == 7 || style == 8) ? dominant(dr) : 0;
+        int dom = style != 3 && style != 5 && style != 6 ? vivid(dr) : 0;
         switch (style) {
             case 1:
                 fillG(lc, box, shade(dom, 0.18f), shade(dom, -0.28f));
                 drawD(lc, fg, rect, 0);
                 break;
-            case 2:
-                fill(lc, box, 0xFFF7F7F9);
+            case 2: // Berwarna: plat warna utama ikon, jenuh
+                fillG(lc, box, shade(dom, 0.06f), shade(dom, -0.18f));
                 drawD(lc, fg, rect, 0);
                 break;
             case 3:
@@ -190,14 +248,15 @@ final class Icons {
                 drawD(lc, fg, rect, 0);
                 break;
             case 4: { // Bertema (Material You)
-                int bgc = UiStyle.mix(accent, 0xFFF2F2F7, 0.22f);
-                int fgc = UiStyle.mix(accent, 0xFF0B1220, 0.35f);
+                // Material You gelap (tanpa plat putih)
+                int bgc = UiStyle.mix(accent, 0xFF161A22, 0.28f);
+                int fgc = UiStyle.mix(accent, Color.WHITE, 0.5f);
                 fill(lc, box, bgc);
                 drawD(lc, mono != null ? mono : fg, rect, fgc);
                 break;
             }
             case 5:
-                fillG(lc, box, Color.argb(120, 255, 255, 255), Color.argb(40, 255, 255, 255));
+                fillG(lc, box, UiStyle.alpha(dom == 0 ? 0xFF8899AA : 0xFF8899AA, 70), Color.argb(26, 255, 255, 255));
                 drawD(lc, fg, rect, 0);
                 break;
             case 6:
@@ -218,8 +277,9 @@ final class Icons {
                 drawD(lc, mono != null ? mono : fg, rect, Color.WHITE);
                 break;
             default:
-                if (ad) drawD(lc, bgD, rect, 0);
-                else fill(lc, box, 0xFFF4F5F8);
+                // "Asli" tanpa putih: latar putih/pucat diganti gradasi warna utama ikon.
+                if (ad && !whiteish(bgD)) drawD(lc, bgD, rect, 0);
+                else fillG(lc, box, shade(dom, 0.1f), shade(dom, -0.3f));
                 drawD(lc, fg, rect, 0);
         }
         // mask bentuk

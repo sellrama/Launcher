@@ -17,7 +17,9 @@ final class Clock {
             "Bertumpuk", "Satu Baris", "iOS Tebal", "Tipis Raksasa", "Analog Klasik",
             "Analog Minimal", "Analog Titik", "Cincin", "Neon", "Outline",
             "Gradien", "Serif Elegan", "Digital 7-Segmen", "Flip Retro", "Gelembung",
-            "Kiri Bertumpuk", "Kata", "Split", "Bayangan 3D", "Kapsul Kaca"};
+            "Kiri Bertumpuk", "Kata", "Split", "Bayangan 3D", "Kapsul Kaca",
+            "Terminal", "Kapsul Ganda", "Garis Bawah", "Radar", "Dot Matriks",
+            "Miring Tebal", "Dua Warna", "Bingkai", "Progres Hari", "Tumpuk Elegan"};
     static final int N = NAMES.length;
 
     // ---- masukan (diisi DepthView setiap frame)
@@ -108,6 +110,36 @@ final class Clock {
                 break;
             case 19:
                 glass(c);
+                break;
+            case 20:
+                terminal(c);
+                break;
+            case 21:
+                pills(c);
+                break;
+            case 22:
+                underline(c);
+                break;
+            case 23:
+                radar(c);
+                break;
+            case 24:
+                dotMatrix(c);
+                break;
+            case 25:
+                italic(c);
+                break;
+            case 26:
+                twoTone(c);
+                break;
+            case 27:
+                frame(c);
+                break;
+            case 28:
+                progress(c);
+                break;
+            case 29:
+                elegantStack(c);
                 break;
             default:
                 stack(c, COND, false, 0);
@@ -429,6 +461,241 @@ final class Clock {
         tp.setAlpha((int) (255 * e * copa));
         c.drawText(s, w / 2, rr.centerY() + dh * 0.5f, tp);
         bottom = rr.bottom;
+    }
+
+    // ================================================================ desain 21–30
+
+    private void terminal(Canvas c) {
+        float size = Math.min(w * 0.17f, h * 0.085f) * csize;
+        paint(MONO, size, 0, 0, 0);
+        tp.setTextAlign(Paint.Align.LEFT);
+        int green = 0xFF39FF88;
+        tp.setColor(green);
+        tp.setShadowLayer(size * 0.15f, 0, 0, UiStyle.alpha(green, 200));
+        tp.setAlpha((int) (255 * al()));
+        float dh = digitH();
+        String s = hhmm(":");
+        float tw = tp.measureText("> " + s + "_");
+        float x = (w - tw) / 2, y = top + dh;
+        String cur = (now / 530) % 2 == 0 ? "_" : " ";
+        c.drawText("> " + s + cur, x, y, tp);
+        tp.setTextSize(size * 0.32f);
+        tp.setAlpha((int) (170 * al()));
+        c.drawText("hyper@rzone:~$ date", x, top - size * 0.12f, tp);
+        fp.reset();
+        fp.setColor(Color.BLACK);
+        fp.setAlpha((int) (40 * al()));
+        for (float yy = top - size * 0.4f; yy < y + d * 4; yy += d * 3) c.drawRect(x - d * 6, yy, x + tw + d * 6, yy + d, fp);
+        bottom = y;
+    }
+
+    private void pills(Canvas c) {
+        float ph = Math.min(h * 0.11f, w * 0.26f) * csize, pw = ph * 1.7f, gap = d * 10;
+        float x0 = (w - pw * 2 - gap) / 2;
+        String[] parts = {"" + dig[0] + dig[1], "" + dig[2] + dig[3]};
+        int[] cols = {UiStyle.alpha(color, 235), UiStyle.alpha(accent, 235)};
+        for (int k = 0; k < 2; k++) {
+            float x = x0 + k * (pw + gap);
+            rr.set(x, top, x + pw, top + ph);
+            fp.reset();
+            fp.setAntiAlias(true);
+            fp.setColor(cols[k]);
+            fp.setAlpha((int) (fp.getAlpha() * al()));
+            c.drawRoundRect(rr, ph / 2, ph / 2, fp);
+            paint(BLACK, ph * 0.62f, 0, 0, 0);
+            tp.setShadowLayer(0, 0, 0, 0);
+            tp.setColor(UiStyle.lum(cols[k]) > 0.6f ? 0xFF101218 : Color.WHITE);
+            tp.setAlpha((int) (255 * al()));
+            c.drawText(parts[k], rr.centerX(), rr.centerY() + digitH() / 2, tp);
+        }
+        bottom = top + ph;
+    }
+
+    private void underline(Canvas c) {
+        float size = Math.min(0.2f * h, w * 0.28f) * csize;
+        paint(THIN, size, 0, 0, 0);
+        String hh = "" + dig[0] + dig[1], mm = "" + dig[2] + dig[3];
+        float a1 = tp.measureText(hh);
+        tp.setTypeface(BLACK);
+        float a2 = tp.measureText(mm);
+        float x0 = (w - a1 - a2 - d * 6) / 2;
+        float dh = digitH();
+        float y = top + dh;
+        tp.setTextAlign(Paint.Align.LEFT);
+        tp.setTypeface(THIN);
+        tp.setAlpha((int) (255 * al()));
+        c.drawText(hh, x0, y, tp);
+        tp.setTypeface(BLACK);
+        tp.setColor(accent);
+        tp.setAlpha((int) (255 * al()));
+        c.drawText(mm, x0 + a1 + d * 6, y, tp);
+        fp.reset();
+        fp.setAntiAlias(true);
+        fp.setColor(accent);
+        fp.setAlpha((int) (255 * al()));
+        float sec = cal.get(Calendar.SECOND) / 60f;
+        rr.set(x0, y + d * 10, x0 + (a1 + a2 + d * 6) * Math.max(0.04f, sec), y + d * 14);
+        c.drawRoundRect(rr, d * 2, d * 2, fp);
+        bottom = y + d * 14;
+    }
+
+    private void radar(Canvas c) {
+        float R = 0.3f * w * csize;
+        float mx = w / 2, my = top + R + d * 6;
+        bottom = my + R;
+        float a = al();
+        fp.reset();
+        fp.setAntiAlias(true);
+        fp.setStyle(Paint.Style.STROKE);
+        fp.setStrokeWidth(d * 1.2f);
+        fp.setColor(accent);
+        for (int i = 1; i <= 3; i++) {
+            fp.setAlpha((int) (90 * a));
+            c.drawCircle(mx, my, R * i / 3f, fp);
+        }
+        float sec = cal.get(Calendar.SECOND) + cal.get(Calendar.MILLISECOND) / 1000f;
+        float ang = sec * 6 - 90;
+        fp.setStyle(Paint.Style.FILL);
+        fp.setShader(new android.graphics.SweepGradient(mx, my, new int[]{0, 0, UiStyle.alpha(accent, (int) (150 * a))},
+                new float[]{0, 0.8f, 1}));
+        c.save();
+        c.rotate(ang, mx, my);
+        c.drawCircle(mx, my, R, fp);
+        c.restore();
+        fp.setShader(null);
+        paint(MED, R * 0.4f, 0, 0, 0);
+        tp.setAlpha((int) (255 * a));
+        c.drawText(hhmm(":"), mx, my + digitH() / 2, tp);
+    }
+
+    private static final int[][] DOT = { // 5×7 font angka
+            {0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E}, {0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E},
+            {0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F}, {0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E},
+            {0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02}, {0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E},
+            {0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E}, {0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08},
+            {0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E}, {0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C}};
+
+    private void dotMatrix(Canvas c) {
+        float cell = Math.min(w / 26f, h / 60f) * csize, r = cell * 0.38f;
+        float total = cell * (5 * 4 + 3 + 2);
+        float x = (w - total) / 2;
+        fp.reset();
+        fp.setAntiAlias(true);
+        for (int i = 0; i < 4; i++) {
+            int v = dig[i] >= '0' && dig[i] <= '9' ? dig[i] - '0' : 0;
+            for (int row = 0; row < 7; row++) {
+                for (int col = 0; col < 5; col++) {
+                    boolean on = (DOT[v][row] & (1 << (4 - col))) != 0;
+                    fp.setColor(on ? color : Color.WHITE);
+                    fp.setAlpha((int) ((on ? 255 : 18) * al() * (on ? rollE(i) : 1)));
+                    c.drawCircle(x + col * cell + cell / 2, top + row * cell + cell / 2, r, fp);
+                }
+            }
+            x += cell * 6;
+            if (i == 1) {
+                fp.setColor(accent);
+                fp.setAlpha((int) (255 * al()));
+                c.drawCircle(x, top + cell * 2.5f, r, fp);
+                c.drawCircle(x, top + cell * 4.5f, r, fp);
+                x += cell * 1;
+            }
+        }
+        bottom = top + cell * 7;
+    }
+
+    private void italic(Canvas c) {
+        c.save();
+        c.skew(-0.18f, 0);
+        c.translate(top * 0.18f + w * 0.03f, 0);
+        line(c, BLACK, 0.82f, 2, false);
+        c.restore();
+    }
+
+    private void twoTone(Canvas c) {
+        float size = Math.min(0.2f * h, w * 0.24f) * csize;
+        paint(BLACK, size, 0, 0, 0);
+        String s = hhmm(":");
+        float tw = tp.measureText(s);
+        if (tw > w * 0.9f) {
+            size *= w * 0.9f / tw;
+            tp.setTextSize(size);
+        }
+        float dh = digitH(), y = top + dh;
+        tp.setTextAlign(Paint.Align.LEFT);
+        String hh = "" + dig[0] + dig[1] + ":";
+        float x0 = (w - tp.measureText(s)) / 2;
+        tp.setAlpha((int) (255 * al()));
+        c.drawText(hh, x0, y, tp);
+        tp.setColor(accent);
+        tp.setAlpha((int) (255 * al()));
+        c.drawText("" + dig[2] + dig[3], x0 + tp.measureText(hh), y, tp);
+        bottom = y;
+    }
+
+    private void frame(Canvas c) {
+        float size = Math.min(0.13f * h, w * 0.2f) * csize;
+        paint(MED, size, 0, 0, 0);
+        String s = hhmm(":");
+        float dh = digitH();
+        float pw = tp.measureText(s) + d * 40, ph = dh + d * 44;
+        rr.set(w / 2 - pw / 2, top, w / 2 + pw / 2, top + ph);
+        fp.reset();
+        fp.setAntiAlias(true);
+        fp.setStyle(Paint.Style.STROKE);
+        fp.setStrokeWidth(d * 2.5f);
+        fp.setColor(color);
+        fp.setAlpha((int) (230 * al()));
+        c.drawRoundRect(rr, d * 22, d * 22, fp);
+        fp.setColor(accent);
+        fp.setStrokeWidth(d * 5);
+        float cl = d * 26;
+        c.drawLine(rr.left + d * 18, rr.top, rr.left + d * 18 + cl, rr.top, fp);
+        c.drawLine(rr.right - d * 18 - cl, rr.bottom, rr.right - d * 18, rr.bottom, fp);
+        tp.setAlpha((int) (255 * al()));
+        c.drawText(s, w / 2, rr.centerY() + dh / 2, tp);
+        bottom = rr.bottom;
+    }
+
+    private void progress(Canvas c) {
+        line(c, MED, 0.74f, 0, false);
+        float y = bottom + d * 18;
+        float frac = (cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)) / 1440f;
+        float bw = w * 0.62f;
+        rr.set(w / 2 - bw / 2, y, w / 2 + bw / 2, y + d * 6);
+        fp.reset();
+        fp.setAntiAlias(true);
+        fp.setColor(Color.WHITE);
+        fp.setAlpha((int) (50 * al()));
+        c.drawRoundRect(rr, d * 3, d * 3, fp);
+        rr.right = rr.left + bw * frac;
+        fp.setShader(new LinearGradient(rr.left, 0, rr.left + bw, 0, color, accent, Shader.TileMode.CLAMP));
+        fp.setAlpha((int) (255 * al()));
+        c.drawRoundRect(rr, d * 3, d * 3, fp);
+        fp.setShader(null);
+        paint(MED, d * 12, 0, 0, 0);
+        tp.setAlpha((int) (180 * al()));
+        c.drawText(Math.round(frac * 100) + "% hari ini berlalu", w / 2, y + d * 26, tp);
+        bottom = y + d * 26;
+    }
+
+    private void elegantStack(Canvas c) {
+        float size = 0.24f * h * csize;
+        paint(THIN, size, 0, 0, 0);
+        tp.setLetterSpacing(0.04f);
+        float dh = digitH();
+        float y1 = top + dh;
+        tp.setAlpha((int) (255 * al()));
+        c.drawText("" + dig[0] + dig[1], w / 2, y1, tp);
+        fp.reset();
+        fp.setAntiAlias(true);
+        fp.setColor(accent);
+        fp.setAlpha((int) (230 * al()));
+        float ly = y1 + dh * 0.22f;
+        c.drawRect(w / 2 - d * 30, ly - d * 1, w / 2 + d * 30, ly + d * 1, fp);
+        float y2 = y1 + dh * 1.45f;
+        tp.setAlpha((int) (255 * al()));
+        c.drawText("" + dig[2] + dig[3], w / 2, y2, tp);
+        bottom = y2;
     }
 
     // ================================================================ analog

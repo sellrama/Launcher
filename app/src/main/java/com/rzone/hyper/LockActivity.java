@@ -61,6 +61,14 @@ public class LockActivity extends Activity {
         v.onCamera = this::camera;
         v.onTorch = this::torch;
         v.onScreenOff = () -> ScreenOff.lock(this);
+        v.onAod = on -> {
+            // AOD: layar tetap menyala dengan kecerahan minimum; kembali normal saat dibangunkan.
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.screenBrightness = on ? 0.01f : WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
+            getWindow().setAttributes(lp);
+            if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        };
         v.onNotif = n -> {
             final PendingIntent pi = n.intent;
             final String key = n.key;
