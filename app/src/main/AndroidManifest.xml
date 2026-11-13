@@ -62,6 +62,10 @@
         <intent>
             <action android:name="android.intent.action.SET_ALARM" />
         </intent>
+        <!-- penyedia widget -->
+        <intent>
+            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        </intent>
         <!-- icon pack -->
         <intent>
             <action android:name="org.adw.launcher.THEMES" />

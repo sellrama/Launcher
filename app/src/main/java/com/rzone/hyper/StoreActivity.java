@@ -207,8 +207,8 @@ public class StoreActivity extends Activity {
 
     private static String get(String u) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
-        c.setConnectTimeout(15000);
-        c.setReadTimeout(30000);
+        c.setConnectTimeout(8000);
+        c.setReadTimeout(10000);
         c.setRequestProperty("User-Agent", "RZONE-Hyper");
         try (InputStream in = c.getInputStream()) {
             ByteArrayOutputStream bo = new ByteArrayOutputStream();

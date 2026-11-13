@@ -88,6 +88,7 @@ public class HomeActivity extends Activity implements AppCell.L {
     Prefs pr;
     SharedPreferences sp;
     UiStyle us;
+    Widgets wd;
     LauncherApps la;
     final Handler h = new Handler(Looper.getMainLooper());
     int W, H, ui, ac, os, cols = 4, rows = 4, hn = 4, sbs;
@@ -177,6 +178,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         pr = new Prefs(this);
         sp = getSharedPreferences("home", MODE_PRIVATE);
         la = getSystemService(LauncherApps.class);
+        wd = new Widgets(this);
         lastSig = pr.launcherSig();
         os = pr.os();
         ui = pr.gi("ui");
@@ -300,6 +302,12 @@ public class HomeActivity extends Activity implements AppCell.L {
         if (!loaded) reloadApps();
         else ready();
         if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_DRAWER, false)) h.postDelayed(() -> animDp(1), 120);
+        // uji CI (build debug saja): tambah widget otomatis
+        if (getIntent() != null && getIntent().hasExtra("ci_widget")
+                && (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            final String hint = getIntent().getStringExtra("ci_widget");
+            h.postDelayed(() -> wd.addFirst(hint), 2500);
+        }
     }
 
     @Override
@@ -763,7 +771,26 @@ public class HomeActivity extends Activity implements AppCell.L {
     }
 
     /** Pindahkan ikon dock yang tidak muat (jumlah dock dikurangi) ke halaman. */
+    @Override
+    protected void onStart() {
+        super.onStart();
+        wd.start();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        wd.stop();
+    }
+
+    @Override
+    protected void onActivityResult(int rq, int rs, Intent data) {
+        super.onActivityResult(rq, rs, data);
+        wd.onResult(rq, rs);
+    }
+
     void normalizeLayout() {
+        wd.normalize();
         for (int i = hn; i < 5; i++) {
             if (hot[i] != null) {
                 placeFree(hot[i]);
@@ -826,6 +853,7 @@ public class HomeActivity extends Activity implements AppCell.L {
                 lp.topMargin = (int) ((s / cols) * cellH);
                 pg.addView(mk(a[s], AppCell.SRC_PAGE, pi, s), lp);
             }
+            wd.addViews(pg, pi);
             pager.addView(pg, new FrameLayout.LayoutParams(-1, -1));
         }
         setPos(cl(pagePos, 0, pages.size() - 1));
@@ -1440,7 +1468,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         int pg = Math.round(pagePos);
         if (pg >= 0 && pg < pager.getChildCount()) {
             ViewGroup g = (ViewGroup) pager.getChildAt(pg);
-            for (int i = 0; i < g.getChildCount(); i++) cand.add((AppCell) g.getChildAt(i));
+            for (int i = 0; i < g.getChildCount(); i++) if (g.getChildAt(i) instanceof AppCell) cand.add((AppCell) g.getChildAt(i));
         }
         for (AppCell c : cand) {
             if (c.item == null) continue;
@@ -1848,6 +1876,7 @@ public class HomeActivity extends Activity implements AppCell.L {
     void wallpaperMenu(float x, float y) {
         List<MI> mi = new ArrayList<>();
         mi.add(new MI("Tanya Tira (AI)", Glyph.STAR, () -> openTira(false)));
+        mi.add(new MI("Widget", Glyph.GRID, () -> wd.showPicker()));
         mi.add(new MI("Wallpaper & gaya", Glyph.IMAGE, () -> openSettings("hw")));
         mi.add(new MI("Total UI (PixelOS / iOS / Custom)", Glyph.STAR, () -> openSettings("main")));
         mi.add(new MI("Pengaturan Hyper", Glyph.GEAR, () -> openSettings("main")));
@@ -2065,6 +2094,7 @@ public class HomeActivity extends Activity implements AppCell.L {
     }
 
     boolean emptyPage(Item[] a) {
+        if (wd.hasOnPage(pages.indexOf(a))) return false;
         for (Item i : a) if (i != null && i != dragItem) return false;
         return true;
     }
@@ -2103,7 +2133,9 @@ public class HomeActivity extends Activity implements AppCell.L {
             if (fromHome) removeSource();
             Item[] arr = t[0] == 1 ? hot : pages.get(t[1]);
             Item o = arr[s];
-            if (o == null) {
+            if (t[0] == 0 && wd.occupied(t[1], s)) {
+                placeFree(nu); // sel itu ditempati widget
+            } else if (o == null) {
                 arr[s] = nu;
             } else if (o.kids != null && nu.kids == null) {
                 o.kids.add(nu);
@@ -2141,9 +2173,10 @@ public class HomeActivity extends Activity implements AppCell.L {
     }
 
     void placeFree(Item nu) {
-        for (Item[] a : pages) {
+        for (int p = 0; p < pages.size(); p++) {
+            Item[] a = pages.get(p);
             for (int i = 0; i < a.length; i++) {
-                if (a[i] == null) {
+                if (a[i] == null && !wd.occupied(p, i)) {
                     a[i] = nu;
                     return;
                 }
@@ -2162,7 +2195,8 @@ public class HomeActivity extends Activity implements AppCell.L {
     View pageCell(int pg, int slot) {
         if (pg >= pager.getChildCount()) return null;
         ViewGroup g = (ViewGroup) pager.getChildAt(pg);
-        for (int i = 0; i < g.getChildCount(); i++) if (((AppCell) g.getChildAt(i)).slot == slot) return g.getChildAt(i);
+        for (int i = 0; i < g.getChildCount(); i++)
+            if (g.getChildAt(i) instanceof AppCell && ((AppCell) g.getChildAt(i)).slot == slot) return g.getChildAt(i);
         return null;
     }
 
@@ -2201,6 +2235,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         ViewGroup g = (ViewGroup) pager.getChildAt(pg);
         for (int i = 0; i < g.getChildCount(); i++) {
             View c = g.getChildAt(i);
+            if (!(c instanceof AppCell)) continue;
             if (x >= c.getLeft() && x < c.getRight() && y - pagerTop >= c.getTop() && y - pagerTop < c.getBottom())
                 return (AppCell) c;
         }
@@ -2265,7 +2300,7 @@ public class HomeActivity extends Activity implements AppCell.L {
             vt = VelocityTracker.obtain();
             vt.addMovement(e);
             cancelLp();
-            if (dp <= 0.01f && y0 > pagerTop && y0 < hotTop && cellAt(x0, y0) == null) {
+            if (dp <= 0.01f && y0 > pagerTop && y0 < hotTop && cellAt(x0, y0) == null && wd.at(x0, y0) == null) {
                 final float lx = x0, ly = y0;
                 lpR = () -> {
                     mode = M_MENU;
@@ -2290,7 +2325,9 @@ public class HomeActivity extends Activity implements AppCell.L {
             cancelLp();
             boolean vert = Math.abs(dy) > Math.abs(dx);
             hz = false;
-            if (dp <= 0.01f) {
+            if (dp <= 0.01f && vert && wd.at(x0, y0) != null) {
+                mode = M_IGNORE; // biarkan widget menggulir isinya sendiri
+            } else if (dp <= 0.01f) {
                 if (vert && dy < 0) mode = side ? M_IGNORE : M_OPEN;
                 else if (vert) mode = M_DOWN;
                 else if (y0 > pagerTop - dp(10) && y0 < hotTop + hotH) mode = M_PAGE;

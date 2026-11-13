@@ -44,6 +44,9 @@ public class CiActivity extends Activity {
                 case "home":
                     t = new Intent(this, HomeActivity.class);
                     break;
+                case "widget":
+                    t = new Intent(this, HomeActivity.class).putExtra("ci_widget", in.getStringExtra("hint"));
+                    break;
                 case "store":
                     t = new Intent(this, StoreActivity.class);
                     break;

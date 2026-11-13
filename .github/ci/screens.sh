@@ -16,6 +16,7 @@ adb shell wm dismiss-keyguard
 adb shell appops set $PKG SYSTEM_ALERT_WINDOW allow
 adb shell cmd notification allow_listener $PKG/$PKG.NotifListener
 adb shell cmd package set-home-activity $PKG/.HomeActivity
+adb shell appwidget grantbind --package $PKG --user 0 || true
 # launcher bawaan emulator sering ANR & menutupi screenshot
 adb shell am force-stop com.google.android.apps.nexuslauncher || true
 adb shell settings put secure immersive_mode_confirmations confirmed
@@ -57,6 +58,13 @@ ci --ei os 2 --es open lock; sleep 4
 adb shell input tap 540 1200; sleep 0.12; adb shell input tap 540 1200; shot aod_ios 3
 # ikon di layar utama & drawer (cek tanpa latar putih)
 ci --ei os 1 --es open drawer; shot icons_drawer 4
+
+# ---------- widget
+ci --ei os 1 --es open widget --es hint deskclock; shot widget_home 9
+adb shell input swipe 900 1200 100 1200 300; shot widget_page2 3
+adb shell input keyevent KEYCODE_HOME; sleep 1
+adb shell input swipe 540 1300 540 1301 900; shot widget_menu 3
+adb shell input keyevent KEYCODE_BACK; sleep 1
 
 # ---------- Store Depth Wallpaper
 ci --ei os 1 --es open store; shot store_illus 8

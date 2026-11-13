@@ -762,7 +762,7 @@ public class DepthView extends View implements SensorEventListener {
             tp.setShadowLayer(8, 0, 2, Color.argb(140, 0, 0, 0));
             tp.setAlpha((int) (210 * a));
             float hy = layout == 2 ? h - d * 44 : h - d * 128;
-            if (layout == 1) hy = h - d * (fakeFp ? 98 : 112);
+            if (layout == 1) hy = h - d * (fakeFp ? 196 : 112); // di atas sidik jari, tidak menimpanya
             c.drawText("Geser ke atas untuk membuka", w / 2, hy + (float) Math.sin(now / 340f) * 6 * d, tp);
         }
         fp.reset();
