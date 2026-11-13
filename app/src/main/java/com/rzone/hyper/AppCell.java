@@ -80,6 +80,29 @@ public class AppCell extends View {
         shown = null;
     }
 
+    /** Kotak ikon (tanpa label) dalam koordinat view ini. */
+    void iconRect(RectF out) {
+        float s = d * 56 * SCALE;
+        float avail = getHeight() - (labels ? d * 22 : 0) - d * 4;
+        s = Math.max(d * 24, Math.min(s, Math.min(getWidth() - d * 4, avail)));
+        float cx = getWidth() / 2f;
+        float top = (getHeight() - (labels ? s + d * 22 : s)) / 2f;
+        out.set(cx - s / 2f, top, cx + s / 2f, top + s);
+    }
+
+    /** Kotak ikon dalam koordinat jendela. */
+    RectF iconOnWindow() {
+        RectF r = new RectF();
+        iconRect(r);
+        int[] l = new int[2];
+        getLocationInWindow(l);
+        r.offset(l[0], l[1]);
+        // perhitungkan skala animasi tekan
+        float cx = r.centerX(), cy = r.centerY(), k = getScaleX();
+        if (k > 0 && k != 1) r.set(cx - r.width() / 2 / k, cy - r.height() / 2 / k, cx + r.width() / 2 / k, cy + r.height() / 2 / k);
+        return r;
+    }
+
     private static boolean ok(Bitmap b) {
         return b != null && !b.isRecycled();
     }

@@ -36,7 +36,8 @@ public class CiActivity extends Activity {
                     t = new Intent(this, HomeActivity.class).putExtra(HomeActivity.EXTRA_DRAWER, true);
                     break;
                 case "tira":
-                    t = new Intent(this, TiraActivity.class).putExtra("ci_q", in.getStringExtra("q"));
+                    String q = in.getStringExtra("q");
+                    t = new Intent(this, TiraActivity.class).putExtra("ci_q", q == null ? null : q.replace('_', ' '));
                     break;
                 default:
                     t = new Intent(this, MainActivity.class).putExtra(MainActivity.EXTRA_PAGE, open);

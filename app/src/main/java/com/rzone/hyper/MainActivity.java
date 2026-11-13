@@ -87,6 +87,7 @@ public class MainActivity extends Activity {
     private void palette() {
         int os = pr.os();
         ios = os == Prefs.OS_IOS;
+        look = os;
         TEXT = Color.WHITE;
         DIV = 0x26FFFFFF;
         if (os == Prefs.OS_PIXEL) {
@@ -157,40 +158,56 @@ public class MainActivity extends Activity {
 
     private void section(String t) {
         group = null;
-        TextView v = tv(ios ? t.toUpperCase() : t, ios ? 12 : 13, !ios, ios ? MUTED : ACC);
+        tileRow = null;
+        lastTile = null;
+        firstTile = null;
+        TextView v = tv(ios ? t.toUpperCase() : t, ios ? 12 : look == 1 ? 14 : 13, !ios, ios ? MUTED : ACC);
         if (!ios) v.setLetterSpacing(0.04f);
         v.setPadding((int) (d * (ios ? 16 : 6)), (int) (d * 22), 0, (int) (d * 2));
         col.addView(v);
     }
 
-    /** Baris navigasi. iOS: tergabung dalam satu kartu dengan garis pemisah; Pixel/Custom: kartu terpisah. */
+    private int look; // 0 Custom (tile), 1 Pixel (tile bersambung), 2 iOS (grup)
+    private LinearLayout tileRow;     // Custom: baris grid 2 kolom
+    private GradientDrawable lastTile; // Pixel: tile terakhir di grup (untuk sudut)
+
+    /**
+     * Baris navigasi dengan tampilan berbeda per Total UI:
+     * iOS = daftar berkelompok + ikon kotak berwarna + "›";
+     * PixelOS = tile bersambung (sudut grup membulat), ikon lingkaran tonal;
+     * Custom = dasbor tile 2 kolom (halaman utama) / kartu.
+     */
     private void row(String title, String sub, int glyph, final Runnable f) {
+        if (look == 0 && page.equals("main")) {
+            tile(title, sub, glyph, f);
+            return;
+        }
         LinearLayout r = new LinearLayout(this);
         r.setGravity(Gravity.CENTER_VERTICAL);
-        int pv = (int) (d * (ios ? 11 : 16));
+        int pv = (int) (d * (ios ? 11 : 15));
         r.setPadding((int) (d * 16), pv, (int) (d * 16), pv);
         if (glyph >= 0) {
             FrameLayout ic = new FrameLayout(this);
-            ic.setBackground(round(ios ? glyphColor(glyph) : SURF2, ios ? 8 : 20));
+            ic.setBackground(round(ios ? glyphColor(glyph) : UiStyle.alpha(ACC, 46), ios ? 8 : 20));
             ic.addView(new Glyph(this, glyph, ios ? Color.WHITE : ACC), new FrameLayout.LayoutParams((int) (d * 20), (int) (d * 20), Gravity.CENTER));
-            LinearLayout.LayoutParams il = new LinearLayout.LayoutParams((int) (d * (ios ? 30 : 40)), (int) (d * (ios ? 30 : 40)));
-            il.rightMargin = (int) (d * 14);
+            int sz = (int) (d * (ios ? 30 : 40));
+            LinearLayout.LayoutParams il = new LinearLayout.LayoutParams(sz, sz);
+            il.rightMargin = (int) (d * (ios ? 14 : 18));
             r.addView(ic, il);
         }
         LinearLayout tx = new LinearLayout(this);
         tx.setOrientation(LinearLayout.VERTICAL);
-        tx.addView(tv(title, ios ? 16 : 16, !ios, TEXT));
+        tx.addView(tv(title, ios ? 16 : 16.5f, false, TEXT));
         if (sub != null) {
-            TextView s = tv(sub, 12.5f, false, MUTED);
-            s.setPadding(0, (int) (d * 2), 0, 0);
-            tx.addView(s);
+            TextView s2 = tv(sub, ios ? 12.5f : 13, false, MUTED);
+            s2.setPadding(0, (int) (d * 2), 0, 0);
+            tx.addView(s2);
         }
         r.addView(tx, new LinearLayout.LayoutParams(0, -2, 1));
         if (ios) r.addView(tv("›", 22, false, 0xFF5A5A5F));
         r.setOnClickListener(v -> f.run());
-        r.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(0x22FFFFFF), null,
-                round(Color.WHITE, ios ? 12 : RAD)));
         if (ios) {
+            r.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(0x22FFFFFF), null, round(Color.WHITE, 12)));
             if (group == null) {
                 group = new LinearLayout(this);
                 group.setOrientation(LinearLayout.VERTICAL);
@@ -208,14 +225,79 @@ public class MainActivity extends Activity {
                 group.addView(div, dl);
             }
             group.addView(r, new LinearLayout.LayoutParams(-1, -2));
+        } else if (look == 1) {
+            // PixelOS (Android 15/16): tile terpisah 2dp; sudut besar di awal & akhir grup.
+            float big = d * 24, small = d * 6;
+            GradientDrawable g = new GradientDrawable();
+            g.setColor(SURF);
+            boolean first = group == null;
+            if (first) {
+                group = new LinearLayout(this);
+                group.setOrientation(LinearLayout.VERTICAL);
+                LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(-1, -2);
+                gl.topMargin = (int) (d * 8);
+                col.addView(group, gl);
+            } else if (lastTile != null) {
+                float[] rr = lastTile == firstTile ? new float[]{big, big, big, big, small, small, small, small}
+                        : new float[]{small, small, small, small, small, small, small, small};
+                lastTile.setCornerRadii(rr);
+            }
+            g.setCornerRadii(first ? new float[]{big, big, big, big, big, big, big, big}
+                    : new float[]{small, small, small, small, big, big, big, big});
+            if (first) firstTile = g;
+            lastTile = g;
+            r.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(0x22FFFFFF), g, null));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.topMargin = first ? 0 : (int) (d * 2);
+            group.addView(r, lp);
         } else {
-            r.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(0x22FFFFFF), round(SURF, RAD),
-                    round(Color.WHITE, RAD)));
+            r.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(0x22FFFFFF), round(SURF, RAD), null));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
             lp.topMargin = (int) (d * 6);
             col.addView(r, lp);
             Util.press(r);
         }
+    }
+
+    private GradientDrawable firstTile;
+
+    /** Custom OS: tile dasbor 2 kolom. */
+    private void tile(String title, String sub, int glyph, final Runnable f) {
+        if (tileRow == null || tileRow.getChildCount() >= 2) {
+            tileRow = new LinearLayout(this);
+            LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(-1, -2);
+            rl.topMargin = (int) (d * 10);
+            col.addView(tileRow, rl);
+        }
+        LinearLayout t = new LinearLayout(this);
+        t.setOrientation(LinearLayout.VERTICAL);
+        t.setPadding((int) (d * 16), (int) (d * 16), (int) (d * 14), (int) (d * 16));
+        GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{UiStyle.mix(ACC, SURF, 0.16f), SURF});
+        bg.setCornerRadius(d * RAD);
+        bg.setStroke((int) d, UiStyle.alpha(ACC, 40));
+        t.setBackground(bg);
+        FrameLayout ic = new FrameLayout(this);
+        ic.setBackground(round(UiStyle.alpha(ACC, 60), 14));
+        ic.addView(new Glyph(this, Math.max(0, glyph), ACC), new FrameLayout.LayoutParams((int) (d * 22), (int) (d * 22), Gravity.CENTER));
+        t.addView(ic, new LinearLayout.LayoutParams((int) (d * 44), (int) (d * 44)));
+        TextView tt = tv(title, 15, true, TEXT);
+        tt.setPadding(0, (int) (d * 12), 0, 0);
+        tt.setMaxLines(2);
+        t.addView(tt);
+        if (sub != null) {
+            TextView ss = tv(sub, 11.5f, false, MUTED);
+            ss.setMaxLines(2);
+            ss.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            ss.setPadding(0, (int) (d * 3), 0, 0);
+            t.addView(ss);
+        }
+        t.setOnClickListener(v -> f.run());
+        Util.press(t);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, 1);
+        if (tileRow.getChildCount() == 0) lp.rightMargin = (int) (d * 5);
+        else lp.leftMargin = (int) (d * 5);
+        tileRow.addView(t, lp);
     }
 
     private int glyphColor(int g) {
@@ -561,14 +643,26 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         col.removeAllViews();
         if (p.equals("main")) {
-            col.addView(tv(ios ? "Pengaturan" : "Hyper", ios ? 34 : 32, true, TEXT));
-            col.addView(tv("RZONE  ·  Lockscreen & Launcher  ·  v" + version(), 13, false, MUTED));
-            TextView pb = tv("Powered by RZONEDEV  ·  TikTok @maramadhona", 11.5f, false, ACC);
-            pb.setPadding(0, (int) (d * 6), 0, 0);
-            pb.setOnClickListener(v -> Util.start(this, new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.tiktok.com/@maramadhona"))));
-            col.addView(pb);
+            mainHeader();
+        } else if (ios) {
+            // iOS: tombol kembali biru kecil + judul besar
+            TextView back = tv("‹ " + (p.equals("hid") ? "App Drawer" : "Pengaturan"), 17, false, ACC);
+            back.setPadding(0, (int) (d * 2), 0, (int) (d * 8));
+            back.setOnClickListener(v -> onBackPressed());
+            col.addView(back);
+            col.addView(tv(title(p), 30, true, TEXT));
+        } else if (look == 1) {
+            // Material: panah kembali dalam lingkaran + judul besar
+            TextView back = tv("←", 22, false, TEXT);
+            back.setGravity(Gravity.CENTER);
+            back.setBackground(round(SURF, 24));
+            back.setOnClickListener(v -> onBackPressed());
+            col.addView(back, new LinearLayout.LayoutParams((int) (d * 44), (int) (d * 44)));
+            TextView t = tv(title(p), 30, false, TEXT);
+            t.setPadding((int) (d * 4), (int) (d * 18), 0, (int) (d * 4));
+            col.addView(t);
         } else {
-            TextView hd = tv("‹  " + title(p), ios ? 22 : 20, true, ios ? ACC : TEXT);
+            TextView hd = tv("‹  " + title(p), 21, true, TEXT);
             hd.setPadding(0, (int) (d * 4), 0, (int) (d * 6));
             hd.setOnClickListener(v -> onBackPressed());
             col.addView(hd);
@@ -666,25 +760,148 @@ public class MainActivity extends Activity {
 
     // =================================================================== halaman utama + Total UI
 
+    /** Entri halaman utama: {judul, keterangan, glyph, halaman, kata kunci}. */
+    private Object[][] entries() {
+        return new Object[][]{
+                {"Lockscreen", "Aktivasi & Izin", statusLine(), Glyph.LOCK, "akt", "izin overlay aktifkan launcher default notifikasi aksesibilitas"},
+                {"Lockscreen", "Wallpaper Depth", "20 bawaan, foto sendiri dengan depth otomatis", Glyph.IMAGE, "lw", "wallpaper foto depth subjek"},
+                {"Lockscreen", "Jam", Clock.N + " desain, ukuran, warna, posisi", Glyph.STAR, "clk", "jam clock analog digital desain warna"},
+                {"Lockscreen", "Lockscreen lainnya", "Tata letak, notifikasi, tombol, senter, AOD", Glyph.FLASH, "lms", "tanggal baterai senter kamera aod notifikasi sidik jari parallax"},
+                {"Tampilan", "Gaya UI", "Polos, Liquid Glass, Frosted, Neon, Outline, Gradien, Tonal", Glyph.GRID, "ui", "kaca blur warna aksen panel"},
+                {"Tampilan", "Ikon aplikasi", "Bentuk, gaya, ukuran, icon pack, badge", Glyph.GRID, "ico", "ikon icon pack bentuk badge"},
+                {"Launcher", "Wallpaper launcher", "15 bawaan, sama dengan lockscreen, atau foto", Glyph.IMAGE, "hw", "wallpaper layar utama redup blur"},
+                {"Launcher", "Layar utama", "Grid, label, At a Glance, efek halaman, kunci tata letak", Glyph.GRID, "home", "kolom baris grid label kunci"},
+                {"Launcher", "Dock & pencarian", "Panel dock, jumlah ikon, gaya search bar", Glyph.SEARCH, "dock", "dock search bar cari"},
+                {"Launcher", "App drawer", "Kolom, urutan, App Library, aplikasi tersembunyi", Glyph.GRID, "drw", "drawer sembunyikan kategori library"},
+                {"Launcher", "Animasi & gestur", "Kecepatan, geser bawah, ketuk dua kali", Glyph.GEAR, "anim", "animasi gestur ketuk geser kecepatan"},
+                {"Asisten", "Tira (Asisten AI)", "Tanya apa saja, perintah suara, buka aplikasi", Glyph.STAR, "tira", "ai asisten tira suara chat"},
+                {"Lainnya", "Reset & info", "Powered by RZONEDEV · gratis", Glyph.INFO, "abt", "reset info versi tentang"},
+        };
+    }
+
+    private void open(String pg) {
+        if (pg.equals("tira")) startActivity(new Intent(this, TiraActivity.class));
+        else show(pg);
+    }
+
+    private LinearLayout mainBody;
+
+    private void mainHeader() {
+        if (ios) {
+            col.addView(tv("Pengaturan", 34, true, TEXT));
+        } else if (look == 1) {
+            TextView t = tv("Pengaturan", 34, false, TEXT);
+            t.setPadding((int) (d * 4), (int) (d * 24), 0, (int) (d * 6));
+            col.addView(t);
+        } else {
+            col.addView(tv("Hyper Studio", 30, true, TEXT));
+            col.addView(tv("Custom OS · rancang tampilanmu sendiri", 13, false, MUTED));
+        }
+        // kolom pencarian pengaturan (berfungsi)
+        final EditText q = new EditText(this);
+        q.setHint(ios ? "Cari" : "Cari di pengaturan");
+        q.setHintTextColor(MUTED);
+        q.setTextColor(TEXT);
+        q.setTextSize(15);
+        q.setSingleLine(true);
+        q.setBackground(round(ios ? SURF2 : SURF, ios ? 10 : 28));
+        int ph = (int) (d * (ios ? 8 : 14));
+        q.setPadding((int) (d * 16), ph, (int) (d * 16), ph);
+        q.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int a, int b, int c) {
+                fillMain(s.toString().trim());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+        LinearLayout.LayoutParams ql = new LinearLayout.LayoutParams(-1, -2);
+        ql.topMargin = (int) (d * 12);
+        col.addView(q, ql);
+        if (ios) {
+            // kartu profil ala iOS
+            LinearLayout pc = new LinearLayout(this);
+            pc.setGravity(Gravity.CENTER_VERTICAL);
+            pc.setPadding((int) (d * 16), (int) (d * 12), (int) (d * 16), (int) (d * 12));
+            pc.setBackground(round(SURF, RAD));
+            ImageView av = new ImageView(this);
+            av.setImageResource(R.mipmap.ic_launcher);
+            pc.addView(av, new LinearLayout.LayoutParams((int) (d * 58), (int) (d * 58)));
+            LinearLayout tx = new LinearLayout(this);
+            tx.setOrientation(LinearLayout.VERTICAL);
+            tx.setPadding((int) (d * 14), 0, 0, 0);
+            tx.addView(tv("RZONE Hyper", 20, false, TEXT));
+            tx.addView(tv("Lockscreen, Launcher & Tira · v" + version(), 13, false, MUTED));
+            pc.addView(tx, new LinearLayout.LayoutParams(0, -2, 1));
+            pc.addView(tv("›", 22, false, 0xFF5A5A5F));
+            pc.setOnClickListener(v -> show("abt"));
+            LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-1, -2);
+            pl.topMargin = (int) (d * 16);
+            col.addView(pc, pl);
+        }
+        mainBody = new LinearLayout(this);
+        mainBody.setOrientation(LinearLayout.VERTICAL);
+        col.addView(mainBody, new LinearLayout.LayoutParams(-1, -2));
+    }
+
     private void pgMain() {
-        section("Total UI");
-        totalUi();
-        section("Lockscreen");
-        row("Aktivasi & Izin", statusLine(), Glyph.LOCK, () -> show("akt"));
-        row("Wallpaper Depth", "20 bawaan, foto sendiri dengan depth otomatis", Glyph.IMAGE, () -> show("lw"));
-        row("Jam", "Bentuk, gaya, ukuran, warna, posisi", Glyph.STAR, () -> show("clk"));
-        row("Lockscreen lainnya", "Tata letak, notifikasi, tombol, senter, AOD", Glyph.FLASH, () -> show("lms"));
-        section("Tampilan");
-        row("Gaya UI", "Polos, Liquid Glass, Frosted, Neon, Outline, Gradien, Tonal", Glyph.GRID, () -> show("ui"));
-        row("Ikon aplikasi", "Bentuk, gaya, ukuran, icon pack, badge", Glyph.GRID, () -> show("ico"));
-        section("Launcher");
-        row("Wallpaper launcher", "15 bawaan, sama dengan lockscreen, atau foto", Glyph.IMAGE, () -> show("hw"));
-        row("Layar utama", "Grid, label, At a Glance, efek halaman, kunci tata letak", Glyph.GRID, () -> show("home"));
-        row("Dock & pencarian", "Panel dock, jumlah ikon, gaya search bar", Glyph.SEARCH, () -> show("dock"));
-        row("App drawer", "Kolom, urutan, App Library, aplikasi tersembunyi", Glyph.GRID, () -> show("drw"));
-        row("Animasi & gestur", "Kecepatan, geser bawah, ketuk dua kali", Glyph.GEAR, () -> show("anim"));
-        section("Lainnya");
-        row("Reset & info", "Powered by RZONEDEV · gratis", Glyph.INFO, () -> show("abt"));
+        fillMain("");
+    }
+
+    /** Isi halaman utama; bila ada kata kunci, tampilkan hasil pencarian saja. */
+    private void fillMain(String query) {
+        LinearLayout saved = col;
+        col = mainBody;
+        col.removeAllViews();
+        group = null;
+        tileRow = null;
+        lastTile = null;
+        firstTile = null;
+        String qq = query.toLowerCase(java.util.Locale.ROOT);
+        if (qq.isEmpty()) {
+            section("Total UI");
+            totalUi();
+            String sec = "";
+            for (Object[] e : entries()) {
+                if (!e[0].equals(sec)) {
+                    sec = (String) e[0];
+                    section(sec);
+                }
+                final String pg = (String) e[4];
+                row((String) e[1], (String) e[2], (Integer) e[3], () -> open(pg));
+            }
+            TextView pb = tv("Powered by RZONEDEV  ·  TikTok @maramadhona", 11.5f, false, MUTED);
+            pb.setGravity(Gravity.CENTER);
+            pb.setPadding(0, (int) (d * 24), 0, 0);
+            pb.setOnClickListener(v -> Util.start(this, new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.tiktok.com/@maramadhona"))));
+            col.addView(pb);
+        } else {
+            section("Hasil");
+            int n = 0;
+            if ("total ui pixel ios custom tema os".contains(qq) || qq.contains("tema")) {
+                row("Total UI", "PixelOS · iOS · Custom OS", Glyph.STAR, () -> show("main"));
+                n++;
+            }
+            for (Object[] e : entries()) {
+                String hay = (e[1] + " " + e[2] + " " + e[5]).toLowerCase(java.util.Locale.ROOT);
+                if (!hay.contains(qq)) continue;
+                final String pg = (String) e[4];
+                row((String) e[1], (String) e[2], (Integer) e[3], () -> open(pg));
+                n++;
+            }
+            if (n == 0) {
+                TextView t = tv("Tidak ada hasil untuk \"" + query + "\"", 14, false, MUTED);
+                t.setPadding((int) (d * 8), (int) (d * 16), 0, 0);
+                col.addView(t);
+            }
+        }
+        col = saved;
     }
 
     private String statusLine() {
@@ -1019,9 +1236,8 @@ public class MainActivity extends Activity {
     private void pgClock() {
         preview();
         LinearLayout c = card();
-        chipsK(c, "Bentuk", "sh", DepthView.CLOCK_SHAPES);
-        togK(c, "Jam kapsul (ikut Gaya UI)", "cgk");
-        chipsK(c, "Gaya", "st", DepthView.CLOCK_STYLES);
+        c.addView(lab("Desain jam (" + Clock.N + ")"));
+        c.addView(faceGrid());
         sliderK(c, "Ukuran", "cs", 50, 150, "%");
         sliderK(c, "Posisi vertikal", "cy", 0, 100, "");
         sliderK(c, "Transparansi", "co", 20, 100, "%");
@@ -1033,6 +1249,103 @@ public class MainActivity extends Activity {
         togK(c, "Bayangan", "csd");
         togK(c, "Format 24 jam", "h24");
         add(c);
+    }
+
+    /** Galeri 20 desain jam dengan pratinjau langsung. */
+    private View faceGrid() {
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        final List<View> cells = new ArrayList<>();
+        int cols = 4;
+        LinearLayout row = null;
+        for (int i = 0; i < Clock.N; i++) {
+            if (i % cols == 0) {
+                row = new LinearLayout(this);
+                LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(-1, -2);
+                rl.topMargin = (int) (d * 8);
+                grid.addView(row, rl);
+            }
+            final int face = i;
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            ClockThumb th = new ClockThumb(this, face);
+            cell.addView(th, new LinearLayout.LayoutParams(-1, (int) (d * 104)));
+            TextView t = tv(Clock.NAMES[i], 10.5f, false, MUTED);
+            t.setGravity(Gravity.CENTER);
+            t.setSingleLine(true);
+            t.setPadding(0, (int) (d * 4), 0, 0);
+            cell.addView(t);
+            cell.setOnClickListener(v -> {
+                set("sh", face);
+                fx(false);
+                for (View x : cells) x.invalidate();
+            });
+            cells.add(th);
+            LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, -2, 1);
+            cl.leftMargin = cl.rightMargin = (int) (d * 3);
+            row.addView(cell, cl);
+        }
+        for (int k = Clock.N % cols == 0 ? cols : Clock.N % cols; k < cols && row != null; k++)
+            row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+        return grid;
+    }
+
+    private static final Canvas MEASURE = new Canvas(Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888));
+
+    /** Pratinjau mini satu desain jam. */
+    final class ClockThumb extends View {
+        final int face;
+        final Clock clk = new Clock();
+        final java.util.Calendar cal = java.util.Calendar.getInstance();
+        final UiStyle us = new UiStyle(MainActivity.this);
+        final Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG), st = new Paint(Paint.ANTI_ALIAS_FLAG);
+        final RectF r = new RectF();
+
+        ClockThumb(Context c, int face) {
+            super(c);
+            this.face = face;
+            st.setStyle(Paint.Style.STROKE);
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            float w = getWidth(), hh = getHeight();
+            boolean sel = pr.gi("sh") == face;
+            r.set(d, d, w - d, hh - d);
+            bg.setShader(new LinearGradient(0, 0, 0, hh, 0xFF2B2F4A, 0xFF0F1220, Shader.TileMode.CLAMP));
+            c.drawRoundRect(r, d * 12, d * 12, bg);
+            cal.setTimeInMillis(System.currentTimeMillis());
+            int h24 = pr.gb("h24") ? cal.get(java.util.Calendar.HOUR_OF_DAY) : (cal.get(java.util.Calendar.HOUR) == 0 ? 12 : cal.get(java.util.Calendar.HOUR));
+            String s = String.format(java.util.Locale.US, "%02d%02d", h24, cal.get(java.util.Calendar.MINUTE));
+            clk.dig = s.toCharArray();
+            clk.cal = cal;
+            clk.now = android.os.SystemClock.uptimeMillis();
+            // gambar pada "layar virtual" seukuran lockscreen, lalu skalakan agar pas di sel
+            clk.w = d * 360;
+            clk.h = d * 760;
+            clk.d = d;
+            clk.color = pr.gi("cc");
+            int cg = pr.gi("cg");
+            clk.accent = cg != 0 ? cg : 0xFF5CE1FF;
+            clk.ui = pr.gi("ui");
+            clk.ac = pr.gi("ac");
+            clk.us = us;
+            clk.dst = new RectF(0, 0, clk.w, clk.h);
+            clk.draw(MEASURE, face, 0); // ukur dulu
+            float ch = Math.max(d * 20, clk.bottom - clk.top);
+            float k = Math.min((w - d * 10) / clk.w, (hh - d * 16) / ch);
+            c.save();
+            c.clipRect(r);
+            c.translate(w / 2, hh / 2);
+            c.scale(k, k);
+            c.translate(-clk.w / 2, -ch / 2);
+            clk.draw(c, face, 0);
+            c.restore();
+            st.setStrokeWidth(d * (sel ? 2.5f : 1));
+            st.setColor(sel ? ACC : 0x33FFFFFF);
+            c.drawRoundRect(r, d * 12, d * 12, st);
+        }
     }
 
     private void pgLockMisc() {

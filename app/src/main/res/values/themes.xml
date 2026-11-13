@@ -22,13 +22,33 @@
 
     <!-- Launcher: wallpaper digambar sendiri, jadi jendela hitam & transparan bar -->
     <style name="HomeTheme" parent="@style/AppTheme">
+        <item name="android:windowAnimationStyle">@style/HomeAnim</item>
         <item name="android:windowShowWallpaper">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
 
+    <!-- Transparan: saat digeser, layar di belakang lockscreen (home/aplikasi) ikut terlihat. -->
     <style name="LockTheme" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
-        <item name="android:windowAnimationStyle">@style/WinAnim</item>
-        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@style/LockAnim</item>
+        <item name="android:windowShowWallpaper">false</item>
+    </style>
+
+    <style name="LockAnim" parent="@android:style/Animation.Translucent">
+        <item name="android:windowEnterAnimation">@anim/lock_in</item>
+        <item name="android:windowExitAnimation">@anim/none</item>
+    </style>
+
+    <!-- Home: tampil langsung (animasi kembali digambar sendiri: aplikasi mengecil ke ikon). -->
+    <style name="HomeAnim" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenExitAnimation">@anim/app_exit_home</item>
+        <item name="android:activityCloseEnterAnimation">@anim/none</item>
+        <item name="android:taskOpenExitAnimation">@anim/app_exit_home</item>
+        <item name="android:taskCloseEnterAnimation">@anim/none</item>
+        <item name="android:taskToFrontEnterAnimation">@anim/none</item>
+        <item name="android:taskToBackEnterAnimation">@anim/none</item>
+        <item name="android:wallpaperCloseEnterAnimation">@anim/none</item>
     </style>
 
     <style name="TiraTheme" parent="@android:style/Theme.Material.NoActionBar">

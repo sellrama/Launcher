@@ -183,7 +183,10 @@ final class TiraBrain {
         StringBuilder p = new StringBuilder();
         p.append("Kamu adalah Tira, asisten AI pribadi di HP pengguna (bagian dari launcher RZONE Hyper buatan RZONEDEV). ")
                 .append("Jawab dalam bahasa Indonesia yang santai, ramah, jelas dan singkat (maksimal 4 kalimat kecuali diminta detail). ")
-                .append("Jangan pakai format markdown.\n");
+                .append("Jangan pakai format markdown. ")
+                .append("Waktu lokal pengguna sekarang: ")
+                .append(new SimpleDateFormat("EEEE, d MMMM yyyy, HH:mm", ID).format(new Date()))
+                .append(" (zona ").append(java.util.TimeZone.getDefault().getID()).append(").\n");
         int from = Math.max(0, history.size() - 4);
         for (int i = from; i < history.size(); i++) {
             p.append("Pengguna: ").append(cut(history.get(i)[0], 200)).append('\n');

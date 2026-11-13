@@ -39,8 +39,8 @@ public class Prefs {
         d("ld", 0);  // id depth bawaan
         d("dep", 1); // efek depth foto sendiri
         // ---------- jam ----------
-        d("cs", 100); d("cy", 27); d("st", 0); d("sh", 0); d("cc", 0xFFFFFFFF); d("cg", 0);
-        d("h24", 1); d("co", 100); d("csd", 1); d("ct", 0); d("cl", 108); d("cgk", 0);
+        d("cs", 100); d("cy", 27); d("sh", 0); d("cc", 0xFFFFFFFF); d("cg", 0); // sh = desain jam (Clock.NAMES)
+        d("h24", 1); d("co", 100); d("csd", 1); d("ct", 0); d("cl", 108);
         // ---------- lockscreen lain ----------
         d("lay", 1); // tata letak lockscreen: 0 Hyper, 1 Pixel, 2 iOS
         d("lp", 100); d("la", 1); d("dm", 0); d("tb", 1); d("lbt", 0); d("hs", 1); d("li", 1);
@@ -59,10 +59,10 @@ public class Prefs {
         // ---------- animasi & gestur ----------
         d("as", 100); d("sg", 0); d("dt", 0);
 
-        THEME_KEYS = new String[]{"ui", "ac", "cs", "cy", "st", "sh", "cc", "cg", "h24", "co", "csd", "ct",
-                "cl", "cgk", "lay", "la", "dm", "tb", "lbt", "hs", "li", "bs", "ffp", "nlk", "hd", "hb", "wp",
+        THEME_KEYS = new String[]{"ui", "ac", "cs", "cy", "sh", "cc", "cg", "h24", "co", "csd", "ct",
+                "cl", "lay", "la", "dm", "tb", "lbt", "hs", "li", "bs", "ffp", "nlk", "hd", "hb", "wp",
                 "hc", "hr", "isz", "ls", "lv", "gl", "gs", "pt", "bdg", "sv", "sp", "sbs", "dk", "dn", "dc",
-                "dl", "rr", "lib", "ik", "is"};
+                "dl", "rr", "lib", "ik", "is", "sg"};
         HOME_KEYS = new String[]{"os", "ui", "ac", "lm", "ld", "hm", "hw", "hd", "hb", "wp", "hc", "hr", "isz",
                 "ls", "lv", "dc", "dl", "sv", "sp", "sbs", "dk", "dn", "pt", "as", "sg", "dt", "gl", "gs", "rr",
                 "ik", "is", "lib", "dso", "bdg", "lck"};
@@ -73,15 +73,15 @@ public class Prefs {
         // iOS: kaca buram, jam tebal satu baris, dock panel, ikon squircle, App Library.
         IOS.putAll(PIXEL);
         p(IOS, "ui", 2); p(IOS, "ac", 0xFF0A84FF);
-        p(IOS, "cs", 100); p(IOS, "cy", 8); p(IOS, "st", 7); p(IOS, "sh", 1); p(IOS, "cc", 0xFFFFFFFF);
-        p(IOS, "cg", 0); p(IOS, "csd", 0); p(IOS, "ct", 0); p(IOS, "cgk", 0); p(IOS, "co", 100);
+        p(IOS, "cs", 100); p(IOS, "cy", 8); p(IOS, "sh", 2); p(IOS, "cc", 0xFFFFFFFF);
+        p(IOS, "cg", 0); p(IOS, "csd", 0); p(IOS, "ct", 0); p(IOS, "co", 100);
         p(IOS, "lay", 2); p(IOS, "la", 1); p(IOS, "dm", 0); p(IOS, "tb", 1); p(IOS, "lbt", 1);
         p(IOS, "hs", 1); p(IOS, "li", 1); p(IOS, "bs", 0); p(IOS, "ffp", 0); p(IOS, "nlk", 1);
         p(IOS, "hd", 0); p(IOS, "hb", 1); p(IOS, "wp", 1);
         p(IOS, "hc", 4); p(IOS, "hr", 6); p(IOS, "isz", 104); p(IOS, "ls", 11); p(IOS, "lv", 1);
         p(IOS, "gl", 0); p(IOS, "pt", 0); p(IOS, "bdg", 2);
         p(IOS, "sv", 1); p(IOS, "sp", 0); p(IOS, "sbs", 1); p(IOS, "dk", 1); p(IOS, "dn", 4);
-        p(IOS, "dc", 4); p(IOS, "dl", 1); p(IOS, "rr", 1); p(IOS, "lib", 1);
+        p(IOS, "dc", 4); p(IOS, "dl", 1); p(IOS, "rr", 1); p(IOS, "lib", 1); p(IOS, "sg", 1);
         p(IOS, "ik", 0); p(IOS, "is", 1);
     }
 
@@ -102,12 +102,38 @@ public class Prefs {
 
     /** v5.x menyimpan "ipk" sebagai string padahal default-nya int; tidak dipakai lagi sebagai int. */
     private void migrate() {
-        if (p.getInt("ver", 0) >= 6) return;
+        int ver = p.getInt("ver", 0);
+        if (ver >= 7) return;
         SharedPreferences.Editor e = p.edit();
-        e.putInt("ver", 6);
-        // Pengguna lama: pertahankan tampilan mereka sebagai Custom OS.
-        if (p.contains("ui") || p.contains("hc") || p.contains("sh")) e.putInt("os", OS_CUSTOM);
+        // v5.x → v6: pengguna lama mempertahankan tampilan mereka sebagai Custom OS.
+        if (ver < 6 && (p.contains("ui") || p.contains("hc") || p.contains("sh"))) e.putInt("os", OS_CUSTOM);
+        // v6 → v7: "bentuk" (4) + "gaya" (8) + kapsul kaca digabung menjadi 20 desain jam; Big Clock dihapus.
+        if (p.contains("sh") || p.contains("st") || p.contains("cgk")) {
+            int sh = safeInt("sh", 0), st = safeInt("st", 0);
+            int face;
+            if (safeInt("cgk", 0) == 1) face = 19;
+            else if (sh == 2) face = 4;
+            else if (st == 5) face = 9;
+            else if (st == 6) face = 10;
+            else if (st == 3) face = 11;
+            else if (st == 4) face = 12;
+            else if (st == 7) face = 2;
+            else if (st == 1 && sh == 1) face = 3;
+            else face = sh == 1 ? 1 : 0;
+            e.putInt("sh", face);
+            e.remove("st").remove("cgk");
+        }
+        e.remove("cust"); // snapshot Custom lama memakai kunci jam lama
+        e.putInt("ver", 7);
         e.apply();
+    }
+
+    private int safeInt(String k, int def) {
+        try {
+            return p.getInt(k, def);
+        } catch (ClassCastException ex) {
+            return def;
+        }
     }
 
     public int gi(String k) {
@@ -273,7 +299,7 @@ public class Prefs {
     public void reset() {
         boolean en = enabled();
         String hid = str("hid"), nm = str("nm");
-        p.edit().clear().putInt("ver", 6).apply();
+        p.edit().clear().putInt("ver", 7).apply();
         enabled(en);
         str("hid", hid);
         str("nm", nm);

@@ -94,11 +94,13 @@ public class HomeActivity extends Activity implements AppCell.L {
     float d, top, navH, speed = 1, wallBase = 1;
     float searchTop, searchH, searchW, hotTop, hotH, hotLeft, hcw, glanceTop, pagerTop, pagerH, cellW, cellH, dropH;
     boolean sbShow, sbTop, glOn, dockPanel, locked, recreating, alive;
+    /** iOS: App Library muncul dari kanan (geser melewati halaman terakhir), bukan drawer dari bawah. */
+    boolean side;
 
     HomeRoot root;
     ImageView wall, blurV;
     View scrim, hl, dockV;
-    FrameLayout home, pager, drawer, overlay, dropBar;
+    FrameLayout home, pager, drawer, overlay, dropBar, fxLayer;
     TextClock glance;
     Dots dots;
     SearchBar search;
@@ -193,6 +195,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         sbs = pr.gi("sbs");
         glOn = pr.gb("gl");
         dockPanel = pr.gb("dk");
+        side = os == Prefs.OS_IOS;
         d = getResources().getDisplayMetrics().density;
         DisplayMetrics m = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getRealMetrics(m);
@@ -280,6 +283,8 @@ public class HomeActivity extends Activity implements AppCell.L {
         root.addView(dropBar, new FrameLayout.LayoutParams(-1, 10));
         overlay = new FrameLayout(this);
         root.addView(overlay, new FrameLayout.LayoutParams(-1, -1));
+        fxLayer = new FrameLayout(this);
+        root.addView(fxLayer, new FrameLayout.LayoutParams(-1, -1));
         root.setOnDragListener(this::onDrag);
         root.setOnApplyWindowInsetsListener(this::onInsets);
         root.getViewTreeObserver().addOnGlobalLayoutListener(this::imePad);
@@ -319,6 +324,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         }
         NotifListener.onChange = this::refreshBadges;
         refreshBadges();
+        if (loaded) root.post(this::playTransitions);
         if (!pr.iconSig().equals(loadedSig)) {
             IconPack.invalidate();
             reloadApps();
@@ -1015,7 +1021,8 @@ public class HomeActivity extends Activity implements AppCell.L {
         libAz.setOnClickListener(v -> setLibMode(false));
         libCat.setOnClickListener(v -> setLibMode(true));
         drawerCol.addView(libTab, tl);
-        libMode = pr.gi("lib") == 1;
+        libMode = pr.gi("lib") == 1 || side;
+        if (side) libTab.setVisibility(View.GONE);
         paintLibTab();
 
         libGrid = new GridView(this);
@@ -1320,12 +1327,24 @@ public class HomeActivity extends Activity implements AppCell.L {
             refreshRecent();
         }
         drawer.setVisibility(dp > 0 ? View.VISIBLE : View.INVISIBLE);
-        drawer.setTranslationY((1 - dp) * H * 0.6f);
-        drawer.setAlpha(Math.min(1, dp * 2.5f));
-        home.setAlpha(Math.max(0, 1 - dp * 1.8f));
-        home.setScaleX(1 - dp * 0.07f);
-        home.setScaleY(1 - dp * 0.07f);
-        home.setTranslationY(-dp * 24 * d);
+        if (side) {
+            // iOS: App Library bergeser masuk dari kanan
+            drawer.setTranslationX((1 - dp) * W);
+            drawer.setTranslationY(0);
+            drawer.setAlpha(1);
+            home.setTranslationX(-dp * W * 0.35f);
+            home.setAlpha(Math.max(0, 1 - dp * 1.4f));
+            home.setScaleX(1);
+            home.setScaleY(1);
+            home.setTranslationY(0);
+        } else {
+            drawer.setTranslationY((1 - dp) * H * 0.6f);
+            drawer.setAlpha(Math.min(1, dp * 2.5f));
+            home.setAlpha(Math.max(0, 1 - dp * 1.8f));
+            home.setScaleX(1 - dp * 0.07f);
+            home.setScaleY(1 - dp * 0.07f);
+            home.setTranslationY(-dp * 24 * d);
+        }
         home.setVisibility(dp >= 0.99f ? View.INVISIBLE : View.VISIBLE);
         search.setTranslationY((sbTop && sbs != 1 ? -1 : 1) * dp * 60 * d);
         blurV.setAlpha(blurOn ? dp : 0);
@@ -1376,9 +1395,16 @@ public class HomeActivity extends Activity implements AppCell.L {
         boolean ok = false;
         try {
             if (v != null && v.isAttachedToWindow()) {
-                startActivity(i, ActivityOptions.makeClipRevealAnimation(v, 0, 0, v.getWidth(), v.getHeight()).toBundle());
+                // Jendela aplikasi membesar tepat dari kotak ikon (bukan dari tengah layar).
+                android.graphics.RectF ir = new android.graphics.RectF();
+                if (v instanceof AppCell) ((AppCell) v).iconRect(ir);
+                else ir.set(0, 0, v.getWidth(), v.getHeight());
+                startActivity(i, ActivityOptions.makeScaleUpAnimation(v, (int) ir.left, (int) ir.top,
+                        (int) ir.width(), (int) ir.height()).toBundle());
+                Motion.launched(it, v instanceof AppCell ? ((AppCell) v).iconOnWindow() : winRect(v));
             } else {
                 startActivity(i);
+                Motion.launched(it, new android.graphics.RectF(W / 2f - dp(30), H / 2f - dp(30), W / 2f + dp(30), H / 2f + dp(30)));
             }
             ok = true;
         } catch (Exception e) {
@@ -1393,6 +1419,111 @@ public class HomeActivity extends Activity implements AppCell.L {
         }
         if (ok) addRecent(it);
         else Toast.makeText(this, "Aplikasi tidak dapat dibuka", Toast.LENGTH_SHORT).show();
+    }
+
+    android.graphics.RectF winRect(View v) {
+        int[] l = new int[2];
+        v.getLocationInWindow(l);
+        return new android.graphics.RectF(l[0], l[1], l[0] + v.getWidth(), l[1] + v.getHeight());
+    }
+
+    // =================================================================== animasi kembali & buka kunci
+
+    /** Cari sel ikon yang terlihat untuk aplikasi ini (halaman aktif / dock / folder di halaman). */
+    AppCell visibleCell(String key) {
+        List<AppCell> cand = new ArrayList<>(hotCells);
+        int pg = Math.round(pagePos);
+        if (pg >= 0 && pg < pager.getChildCount()) {
+            ViewGroup g = (ViewGroup) pager.getChildAt(pg);
+            for (int i = 0; i < g.getChildCount(); i++) cand.add((AppCell) g.getChildAt(i));
+        }
+        for (AppCell c : cand) {
+            if (c.item == null) continue;
+            if (c.item.kids == null && c.item.key().equals(key)) return c;
+            if (c.item.kids != null) for (Item k : c.item.kids) if (k.key().equals(key)) return c;
+        }
+        return null;
+    }
+
+    void playTransitions() {
+        long now = System.currentTimeMillis();
+        if (Motion.pendingUnlock) {
+            Motion.pendingUnlock = false;
+            Motion.lastAt = 0;
+            playUnlock();
+            return;
+        }
+        if (Motion.lastAt > 0 && now - Motion.lastAt < 6 * 60 * 60 * 1000L && Motion.lastKey != null) {
+            Motion.lastAt = 0;
+            playReturn();
+        }
+    }
+
+    /** Aplikasi "mengecil" kembali ke ikonnya. */
+    void playReturn() {
+        android.graphics.RectF to;
+        final AppCell target = dp < 0.5f ? visibleCell(Motion.lastKey) : null;
+        if (target != null) to = target.iconOnWindow();
+        else if (dp >= 0.99f) to = new android.graphics.RectF(Motion.lastRect);
+        else to = new android.graphics.RectF(W / 2f - dp(28), H * 0.45f - dp(28), W / 2f + dp(28), H * 0.45f + dp(28));
+        if (to.width() <= 0) return;
+        float screenRad = dp(os == Prefs.OS_IOS ? 44 : 28);
+        float iconRad = to.width() * (pr.gi("is") == 0 ? 0.5f : 0.28f);
+        final Motion.Shrink s = new Motion.Shrink(this, new android.graphics.RectF(0, 0, W, H), to, Motion.lastIcon, screenRad, iconRad);
+        fxLayer.addView(s, new FrameLayout.LayoutParams(-1, -1));
+        if (target != null) target.setAlpha(0f);
+        View content = dp >= 0.99f ? drawer : home;
+        content.setScaleX(0.9f);
+        content.setScaleY(0.9f);
+        content.animate().scaleX(1).scaleY(1).setDuration(T(480)).setInterpolator(Motion.EMPH).start();
+        wall.setScaleX(wallBase + 0.08f);
+        wall.setScaleY(wallBase + 0.08f);
+        wall.animate().scaleX(wallBase).scaleY(wallBase).setDuration(T(520)).setInterpolator(Motion.EMPH).start();
+        s.run(T(460), () -> {
+            fxLayer.removeView(s);
+            if (target != null) {
+                target.setAlpha(1f);
+                target.setScaleX(0.86f);
+                target.setScaleY(0.86f);
+                target.animate().scaleX(1).scaleY(1).setDuration(T(320)).setInterpolator(new OvershootInterpolator(2.2f)).start();
+            }
+        });
+    }
+
+    /** Setelah membuka kunci: layar utama mendarat dengan zoom, ikon menyebar dari tengah. */
+    void playUnlock() {
+        if (dp > 0) setDp(0);
+        wall.setScaleX(wallBase + 0.14f);
+        wall.setScaleY(wallBase + 0.14f);
+        wall.animate().scaleX(wallBase).scaleY(wallBase).setDuration(T(700)).setInterpolator(Motion.EMPH_DECEL).start();
+        List<View> vs = new ArrayList<>();
+        int pg = Math.round(pagePos);
+        if (pg >= 0 && pg < pager.getChildCount()) {
+            ViewGroup g = (ViewGroup) pager.getChildAt(pg);
+            for (int i = 0; i < g.getChildCount(); i++) vs.add(g.getChildAt(i));
+        }
+        vs.addAll(hotCells);
+        float cxs = W / 2f, cys = H / 2f;
+        for (View v : vs) {
+            int[] l = new int[2];
+            v.getLocationInWindow(l);
+            float vx = l[0] + v.getWidth() / 2f, vy = l[1] + v.getHeight() / 2f;
+            float dist = (float) Math.hypot(vx - cxs, vy - cys) / (float) Math.hypot(cxs, cys);
+            v.animate().cancel();
+            v.setAlpha(0f);
+            v.setScaleX(1.25f);
+            v.setScaleY(1.25f);
+            v.setTranslationX((vx - cxs) * 0.12f);
+            v.setTranslationY((vy - cys) * 0.12f);
+            v.animate().alpha(1).scaleX(1).scaleY(1).translationX(0).translationY(0).setStartDelay(T((long) (dist * 140)))
+                    .setDuration(T(520)).setInterpolator(Motion.EMPH_DECEL).start();
+        }
+        for (View v : new View[]{search, glance, dots, dockV}) {
+            if (v.getVisibility() != View.VISIBLE) continue;
+            v.setAlpha(0f);
+            v.setTranslationY(dp(20));
+            v.animate().alpha(1).translationY(0).setStartDelay(T(120)).setDuration(T(500)).setInterpolator(Motion.EMPH_DECEL).start();
+        }
     }
 
     @Override
@@ -2097,12 +2228,12 @@ public class HomeActivity extends Activity implements AppCell.L {
     }
 
     class HomeRoot extends FrameLayout {
-        static final int M_NONE = 0, M_PAGE = 1, M_OPEN = 2, M_CLOSE = 3, M_DOWN = 4, M_DRAWER = 5, M_MENU = 9;
+        static final int M_NONE = 0, M_PAGE = 1, M_OPEN = 2, M_CLOSE = 3, M_DOWN = 4, M_DRAWER = 5, M_IGNORE = 6, M_MENU = 9;
         long lastTap;
         Runnable lpR;
         int mode;
         float sdp, sx, x0, y0;
-        boolean shade;
+        boolean shade, hz;
         final int slop;
         VelocityTracker vt;
 
@@ -2114,6 +2245,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         void init(MotionEvent e) {
             mode = M_NONE;
             shade = false;
+            hz = false;
             x0 = e.getX();
             y0 = e.getY();
             sx = pagePos;
@@ -2122,6 +2254,7 @@ public class HomeActivity extends Activity implements AppCell.L {
             if (dpAnim != null && dpAnim.isRunning()) {
                 dpAnim.cancel();
                 mode = M_DRAWER; // pegang drawer yang sedang beranimasi
+                hz = side;
             }
             if (vt != null) vt.recycle();
             vt = VelocityTracker.obtain();
@@ -2151,18 +2284,24 @@ public class HomeActivity extends Activity implements AppCell.L {
             if (Math.hypot(dx, dy) < slop) return;
             cancelLp();
             boolean vert = Math.abs(dy) > Math.abs(dx);
+            hz = false;
             if (dp <= 0.01f) {
-                if (vert && dy < 0) mode = M_OPEN;
+                if (vert && dy < 0) mode = side ? M_IGNORE : M_OPEN;
                 else if (vert) mode = M_DOWN;
-                else if (y0 > pagerTop - dp(10) && y0 < hotTop) mode = M_PAGE;
+                else if (y0 > pagerTop - dp(10) && y0 < hotTop + hotH) mode = M_PAGE;
             } else if (dp < 0.98f) {
                 mode = M_DRAWER;
-            } else if (vert && dy > 0) {
+                hz = side;
+            } else if (side && !vert && dx > 0) {
+                mode = M_CLOSE; // App Library: geser ke kanan untuk kembali
+                hz = true;
+            } else if (!side && vert && dy > 0) {
                 GridView g = libMode && libGrid.getVisibility() == View.VISIBLE ? libGrid : grid;
                 if (!g.canScrollVertically(-1)) mode = M_CLOSE;
             }
             if (mode == M_OPEN || mode == M_CLOSE || mode == M_DRAWER) {
                 sdp = dp;
+                x0 = e.getX();
                 y0 = e.getY();
                 hideIme();
             }
@@ -2179,7 +2318,7 @@ public class HomeActivity extends Activity implements AppCell.L {
                     if (vt != null) {
                         vt.addMovement(e);
                         if (mode == M_NONE) detect(e);
-                        return mode != M_NONE && mode != M_MENU;
+                        return mode != M_NONE && mode != M_MENU && mode != M_IGNORE;
                     }
                     break;
                 case MotionEvent.ACTION_UP:
@@ -2203,9 +2342,16 @@ public class HomeActivity extends Activity implements AppCell.L {
                     if (mode == M_NONE) detect(e);
                     float dx = e.getX() - x0, dy = e.getY() - y0;
                     if (mode == M_PAGE) {
-                        setPos(cl(sx - dx / W, -0.22f, pages.size() - 1 + 0.22f));
+                        float raw = sx - dx / W, last = pages.size() - 1;
+                        if (side && raw > last) {
+                            setPos(last);
+                            setDp(raw - last);
+                        } else {
+                            if (side && dp > 0) setDp(0);
+                            setPos(cl(raw, -0.22f, last + 0.22f));
+                        }
                     } else if (mode == M_OPEN || mode == M_CLOSE || mode == M_DRAWER) {
-                        setDp(sdp - dy / (H * 0.6f));
+                        setDp(hz ? sdp - dx / W : sdp - dy / (H * 0.6f));
                     } else if (mode == M_DOWN && !shade && dy > dp(50)) {
                         shade = true;
                         swipeDown();
@@ -2218,10 +2364,14 @@ public class HomeActivity extends Activity implements AppCell.L {
                     vt.addMovement(e);
                     vt.computeCurrentVelocity(1000);
                     float vx = vt.getXVelocity(), vy = vt.getYVelocity();
-                    if (mode == M_PAGE) {
+                    if (mode == M_PAGE && side && dp > 0) {
+                        animDp(vx < -700 || (vx <= 700 && dp > 0.3f) ? 1 : 0);
+                    } else if (mode == M_PAGE) {
                         int t = Math.round(pagePos);
                         if (Math.abs(vx) > 900) t = vx < 0 ? (int) Math.floor(pagePos) + 1 : (int) Math.ceil(pagePos) - 1;
                         snapTo((int) cl(t, 0, pages.size() - 1));
+                    } else if ((mode == M_CLOSE || mode == M_DRAWER) && hz) {
+                        animDp(vx > 700 || (vx >= -700 && dp < 0.7f) ? 0 : 1);
                     } else if (mode == M_OPEN || mode == M_CLOSE || mode == M_DRAWER) {
                         animDp(vy < -900 || (vy <= 900 && dp > 0.45f) ? 1 : 0);
                     } else if (mode == M_NONE && dp > 0 && dp < 1) {

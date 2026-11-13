@@ -180,14 +180,16 @@ public class LockActivity extends Activity {
     }
 
     private void finishTo(final Intent next, final Runnable after) {
-        View dv = getWindow().getDecorView();
-        dv.animate().scaleX(1.1f).scaleY(1.1f).alpha(0).setDuration(300).setInterpolator(new DecelerateInterpolator(2f))
-                .withEndAction(() -> {
-                    if (next != null) Util.start(this, next);
-                    if (after != null) after.run();
-                    finish();
-                    overridePendingTransition(android.R.anim.fade_in, 0);
-                }).start();
+        // Lockscreen bergeser ke atas & memudar (layar di belakang sudah terlihat karena jendela transparan),
+        // lalu layar utama memainkan animasi "mendarat".
+        v.exit(() -> {
+            Motion.pendingUnlock = next == null || (next.getComponent() != null
+                    && HomeActivity.class.getName().equals(next.getComponent().getClassName()));
+            if (next != null) Util.start(this, next);
+            if (after != null) after.run();
+            finish();
+            overridePendingTransition(0, 0);
+        });
     }
 
     @Override

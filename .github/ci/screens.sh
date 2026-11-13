@@ -20,7 +20,7 @@ adb shell cmd notification post -S bigtext -t 'Budi' ci1 'Nanti jadi ketemu jam 
 adb shell cmd notification post -S bigtext -t 'Promo' ci2 'Diskon 50% khusus hari ini'
 adb logcat -c
 
-ci() { adb shell am start -W -n $PKG/.CiActivity "$@" >/dev/null 2>&1; }
+ci() { adb shell am start -W --activity-clear-task -f 0x10000000 -n $PKG/.CiActivity "$@" | grep -iE "error|Status" ; }
 shot() { sleep ${2:-4}; adb exec-out screencap -p > $OUT/raw/$1.png; }
 home_key() { adb shell input keyevent KEYCODE_HOME; }
 
@@ -39,7 +39,7 @@ for OS in 1 2 0; do
   home_key; sleep 2
   adb shell input swipe 540 1200 540 1201 1200; shot ${N}_11_longpress_empty 2
   home_key; sleep 1
-  ci --es open tira --es q "jam berapa sekarang";  shot ${N}_12_tira 8
+  ci --es open tira --es q siapa_kamu_dan_bisa_apa;  shot ${N}_12_tira 12
   adb shell input keyevent KEYCODE_BACK
 done
 
@@ -54,7 +54,7 @@ adb logcat -d | grep -iE "rzone|FATAL|ANR" | tail -400 > $OUT/app_log.txt
 
 # kecilkan gambar agar repo tidak membengkak
 for f in $OUT/raw/*.png; do
-  convert "$f" -resize 432x -quality 72 "$OUT/$(basename "${f%.png}").jpg" || cp "$f" $OUT/
+  ffmpeg -loglevel error -y -i "$f" -vf scale=432:-1 -q:v 5 "$OUT/$(basename "${f%.png}").jpg" || cp "$f" $OUT/
 done
 rm -rf $OUT/raw
 ls -la $OUT
