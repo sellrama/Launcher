@@ -17,7 +17,7 @@ adb shell appops set $PKG SYSTEM_ALERT_WINDOW allow
 adb shell cmd notification allow_listener $PKG/$PKG.NotifListener
 adb shell cmd package set-home-activity $PKG/.HomeActivity
 # launcher bawaan emulator sering ANR & menutupi screenshot
-adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
+adb shell am force-stop com.google.android.apps.nexuslauncher || true
 adb shell settings put secure immersive_mode_confirmations confirmed
 adb shell cmd notification post -S bigtext -t 'Budi' ci1 'Nanti jadi ketemu jam 7 kan?'
 adb shell cmd notification post -S bigtext -t 'Promo' ci2 'Diskon 50% khusus hari ini'

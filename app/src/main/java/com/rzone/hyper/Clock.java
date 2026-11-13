@@ -314,7 +314,14 @@ final class Clock {
     private void seg7(Canvas c) {
         // segmen: a b c d e f g
         int[] map = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
-        float dw = Math.min(w * 0.17f, h * 0.075f) * csize, dh = dw * 1.8f, t = dw * 0.17f, gap = dw * 0.35f;
+        float dw = Math.min(w * 0.15f, h * 0.068f) * csize, dh = dw * 1.8f, t = dw * 0.17f, gap = dw * 0.3f;
+        if (dw * 4 + gap * 4 > w * 0.9f) { // jangan sampai terpotong di tepi layar
+            float k = w * 0.9f / (dw * 4 + gap * 4);
+            dw *= k;
+            dh *= k;
+            t *= k;
+            gap *= k;
+        }
         float total = dw * 4 + gap * 3 + gap;
         float x = (w - total) / 2;
         fp.reset();
