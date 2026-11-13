@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- bintang bersinar 4 sudut (gaya asisten AI) -->
+    <path android:pathData="M54,26 C56,44 64,52 82,54 C64,56 56,64 54,82 C52,64 44,56 26,54 C44,52 52,44 54,26 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="30" android:startY="30" android:endX="80" android:endY="80">
+                <item android:offset="0" android:color="#FF7C4DFF" />
+                <item android:offset="0.5" android:color="#FFFF4FA3" />
+                <item android:offset="1" android:color="#FF00E5FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:fillColor="#E6FFFFFF"
+        android:pathData="M74,30 C74.6,34 76,35.4 80,36 C76,36.6 74.6,38 74,42 C73.4,38 72,36.6 68,36 C72,35.4 73.4,34 74,30 Z" />
+</vector>

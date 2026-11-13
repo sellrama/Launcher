@@ -260,6 +260,10 @@ public class HomeActivity extends Activity implements AppCell.L {
         search = new SearchBar(this, us, ui, ac, sbs);
         search.setVisibility(sbShow ? View.VISIBLE : View.GONE);
         search.setOnClickListener(v -> searchClick());
+        search.setOnLongClickListener(v -> {
+            openTira(true);
+            return true;
+        });
         Util.press(search);
         home.addView(search, new FrameLayout.LayoutParams(10, 10));
         root.addView(home, new FrameLayout.LayoutParams(-1, -1));
@@ -494,6 +498,10 @@ public class HomeActivity extends Activity implements AppCell.L {
         openSearch();
     }
 
+    void openTira(boolean voice) {
+        Util.start(this, new Intent(this, TiraActivity.class).putExtra("voice", voice));
+    }
+
     /** Buka drawer dengan keyboard siap mengetik. */
     void openSearch() {
         animDp(1);
@@ -547,7 +555,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         }
         Set<String> seenKeys = new HashSet<>();
         for (ResolveInfo r : ris) {
-            if (r.activityInfo == null || r.activityInfo.packageName.equals(x.getPackageName())) continue;
+            if (r.activityInfo == null) continue;
             Item it = new Item();
             it.pkg = r.activityInfo.packageName;
             it.cls = r.activityInfo.name;
@@ -581,7 +589,7 @@ public class HomeActivity extends Activity implements AppCell.L {
             try {
                 for (ResolveInfo r : app.getPackageManager().queryIntentActivities(
                         new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
-                    if (r.activityInfo != null && !r.activityInfo.packageName.equals(app.getPackageName()))
+                    if (r.activityInfo != null)
                         now.add(r.activityInfo.packageName + "/" + r.activityInfo.name);
                 }
             } catch (Exception e) {
@@ -1703,6 +1711,7 @@ public class HomeActivity extends Activity implements AppCell.L {
 
     void wallpaperMenu(float x, float y) {
         List<MI> mi = new ArrayList<>();
+        mi.add(new MI("Tanya Tira (AI)", Glyph.STAR, () -> openTira(false)));
         mi.add(new MI("Wallpaper & gaya", Glyph.IMAGE, () -> openSettings("hw")));
         mi.add(new MI("Total UI (PixelOS / iOS / Custom)", Glyph.STAR, () -> openSettings("main")));
         mi.add(new MI("Pengaturan Hyper", Glyph.GEAR, () -> openSettings("main")));
@@ -2076,6 +2085,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         int a = pr.gi("sg");
         if (a == 0) expandShade();
         else if (a == 1) openSearch();
+        else if (a == 3) openTira(false);
     }
 
     void doubleTap() {
@@ -2083,6 +2093,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         if (a == 1) startActivity(new Intent(this, LockActivity.class));
         else if (a == 2) animDp(1);
         else if (a == 3) ScreenOff.lock(this);
+        else if (a == 4) openTira(true);
     }
 
     class HomeRoot extends FrameLayout {

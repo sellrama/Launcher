@@ -1286,8 +1286,8 @@ public class MainActivity extends Activity {
     private void pgAnim() {
         LinearLayout c = card();
         sliderK(c, "Kecepatan animasi", "as", 50, 200, "%");
-        chipsK(c, "Geser ke bawah di layar utama", "sg", "Tarik notifikasi", "Pencarian", "Tidak ada");
-        chipsK(c, "Ketuk dua kali di area kosong", "dt", "Tidak ada", "Buka lockscreen", "Buka drawer", "Matikan layar");
+        chipsK(c, "Geser ke bawah di layar utama", "sg", "Tarik notifikasi", "Pencarian", "Tidak ada", "Tira");
+        chipsK(c, "Ketuk dua kali di area kosong", "dt", "Tidak ada", "Buka lockscreen", "Buka drawer", "Matikan layar", "Tira");
         add(c);
         note("\"Matikan layar\" butuh izin Aksesibilitas untuk Hyper (Android 9+). Hyper hanya memakainya untuk mengunci layar.");
     }
