@@ -187,6 +187,7 @@ public class HomeActivity extends Activity implements AppCell.L {
         AppCell.BADGE = pr.gi("bdg");
         AppCell.BADGE_COLOR = os == Prefs.OS_PIXEL ? ac : 0xFFFF453A;
         AppCell.FOLDER_RAD = pr.gi("is") == 0 ? 0.5f : 0.3f;
+        AppCell.FOLDER_BG = Zth.folderBg(this, 240);
         cols = Math.max(3, Math.min(6, pr.gi("hc")));
         hn = Math.max(3, Math.min(5, pr.gi("dn")));
         locked = pr.gb("lck");
@@ -325,7 +326,6 @@ public class HomeActivity extends Activity implements AppCell.L {
         NotifListener.onChange = this::refreshBadges;
         refreshBadges();
         if (loaded) root.post(this::playTransitions);
-        HotwordService.sync(this, true);
         if (!pr.iconSig().equals(loadedSig)) {
             IconPack.invalidate();
             reloadApps();
@@ -337,7 +337,6 @@ public class HomeActivity extends Activity implements AppCell.L {
     @Override
     protected void onPause() {
         super.onPause();
-        HotwordService.sync(this, false);
         if (dragging) endDrag();
     }
 
@@ -581,7 +580,7 @@ public class HomeActivity extends Activity implements AppCell.L {
             it.label = nm != null ? nm : it.original;
             try {
                 Drawable ic = r.loadIcon(pm);
-                it.icon = IconPack.make(x, pack, it.pkg, it.cls, ic, sz, shape, style, acc);
+                it.icon = Zth.appIcon(x, pf, it.pkg, it.cls, it.original, ic, sz);
             } catch (Throwable e) {
                 it.icon = Icons.fallback(x, sz);
             }

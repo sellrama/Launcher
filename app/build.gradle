@@ -10,18 +10,32 @@ android {
         applicationId 'com.rzone.hyper'
         minSdk 27
         targetSdk 34
-        versionCode 8
-        versionName '7.0'
+        // Naik otomatis di setiap build CI agar APK baru bisa dipasang menimpa yang lama.
+        def run = (System.getenv('GITHUB_RUN_NUMBER') ?: '0') as int
+        versionCode 100 + run
+        versionName '8.0' + (run > 0 ? ".${run}" : '')
+    }
+
+    // Kunci tanda tangan TETAP (dulu kunci debug berubah tiap build CI → harus uninstall).
+    // Semua build (debug & release) memakai kunci ini, jadi update cukup dipasang menimpa.
+    signingConfigs {
+        hyper {
+            storeFile rootProject.file('keystore/hyper.jks')
+            storePassword 'rzonehyper'
+            keyAlias 'hyper'
+            keyPassword 'rzonehyper'
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.hyper
+        }
         release {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Ditandatangani dengan kunci debug agar APK release bisa langsung dipasang.
-            // Ganti dengan keystore sendiri untuk rilis resmi.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.hyper
         }
     }
 

@@ -22,6 +22,18 @@ public class CiActivity extends Activity {
                 if (i > 0) pr.si(kv.substring(0, i).trim(), Integer.parseInt(kv.substring(i + 1).trim()));
             }
         }
+        // Pasang tema .zth uji dari folder aplikasi (adb push ke /sdcard/Android/data/<pkg>/files/)
+        String zth = in.getStringExtra("zth");
+        if (zth != null) {
+            try {
+                java.io.File f = new java.io.File(getExternalFilesDir(null), zth);
+                String nm = Zth.install(this, android.net.Uri.fromFile(f));
+                Zth.applyWallpapers(this, new java.io.File(Zth.root(this), nm));
+                pr.str("zth", nm);
+            } catch (Exception e) {
+                android.util.Log.e("Hyper", "ci zth", e);
+            }
+        }
         String open = in.getStringExtra("open");
         if (open != null) {
             Intent t = null;
@@ -31,6 +43,9 @@ public class CiActivity extends Activity {
                     break;
                 case "home":
                     t = new Intent(this, HomeActivity.class);
+                    break;
+                case "store":
+                    t = new Intent(this, StoreActivity.class);
                     break;
                 case "drawer":
                     t = new Intent(this, HomeActivity.class).putExtra(HomeActivity.EXTRA_DRAWER, true);

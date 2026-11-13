@@ -226,11 +226,10 @@ public class TiraActivity extends Activity {
         sheet.setTranslationY(d * 500);
         sheet.animate().translationY(0).setDuration(420).setInterpolator(new DecelerateInterpolator(2.4f)).start();
 
-        HotwordService.paused = true;
         handle(getIntent());
     }
 
-    /** Perintah dari luar: "cmd" (kalimat setelah "Hai Tira"), "voice" (langsung mendengar), "ci_q" (uji CI). */
+    /** Perintah dari luar: "cmd" (kalimat), "voice" (langsung mendengar lewat tombol), "ci_q" (uji CI). */
     private void handle(Intent in) {
         if (in == null) return;
         String ci = in.getStringExtra("ci_q");
@@ -492,7 +491,6 @@ public class TiraActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        HotwordService.paused = false;
         if (sr != null) sr.destroy();
         if (tts != null) tts.shutdown();
         h.removeCallbacksAndMessages(null);

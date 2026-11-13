@@ -711,6 +711,9 @@ public class MainActivity extends Activity {
             case "tira":
                 pgTira();
                 break;
+            case "tema":
+                pgTema();
+                break;
             case "abt":
                 pgAbout();
                 break;
@@ -759,6 +762,8 @@ public class MainActivity extends Activity {
                 return "Studio Custom OS";
             case "tira":
                 return "Tira";
+            case "tema":
+                return "Tema";
             default:
                 return "Reset & Info";
         }
@@ -770,23 +775,26 @@ public class MainActivity extends Activity {
     private Object[][] entries() {
         return new Object[][]{
                 {"Lockscreen", "Aktivasi & Izin", statusLine(), Glyph.LOCK, "akt", "izin overlay aktifkan launcher default notifikasi aksesibilitas"},
+                {"Lockscreen", "Store Depth Wallpaper", "300 ilustrasi depth + 1000+ foto online", Glyph.STAR, "store", "store toko wallpaper depth unduh foto"},
                 {"Lockscreen", "Wallpaper Depth", "20 bawaan, foto sendiri dengan depth otomatis", Glyph.IMAGE, "lw", "wallpaper foto depth subjek"},
                 {"Lockscreen", "Jam", Clock.N + " desain, ukuran, warna, posisi", Glyph.STAR, "clk", "jam clock analog digital desain warna"},
                 {"Lockscreen", "Lockscreen lainnya", "Tata letak, notifikasi, tombol, senter, AOD", Glyph.FLASH, "lms", "tanggal baterai senter kamera aod notifikasi sidik jari parallax"},
                 {"Tampilan", "Gaya UI", "Polos, Liquid Glass, Frosted, Neon, Outline, Gradien, Tonal", Glyph.GRID, "ui", "kaca blur warna aksen panel"},
+                {"Tampilan", "Tema .zth", "Pasang tema HiOS/XOS: ikon, wallpaper, folder", Glyph.STAR, "tema", "tema theme zth ikon wallpaper xos hios"},
                 {"Tampilan", "Ikon aplikasi", "Bentuk, gaya, ukuran, icon pack, badge", Glyph.GRID, "ico", "ikon icon pack bentuk badge"},
                 {"Launcher", "Wallpaper launcher", "15 bawaan, sama dengan lockscreen, atau foto", Glyph.IMAGE, "hw", "wallpaper layar utama redup blur"},
                 {"Launcher", "Layar utama", "Grid, label, At a Glance, efek halaman, kunci tata letak", Glyph.GRID, "home", "kolom baris grid label kunci"},
                 {"Launcher", "Dock & pencarian", "Panel dock, jumlah ikon, gaya search bar", Glyph.SEARCH, "dock", "dock search bar cari"},
                 {"Launcher", "App drawer", "Kolom, urutan, App Library, aplikasi tersembunyi", Glyph.GRID, "drw", "drawer sembunyikan kategori library"},
                 {"Launcher", "Animasi & gestur", "Kecepatan, geser bawah, ketuk dua kali", Glyph.GEAR, "anim", "animasi gestur ketuk geser kecepatan"},
-                {"Asisten", "Tira (Asisten AI)", "\"Hai Tira\", tombol tengah, perintah suara, video", Glyph.MIC, "tira", "ai asisten tira suara chat hai halo video"},
+                {"Asisten", "Tira (Asisten AI)", "Tanya apa saja, tombol tengah, putar video", Glyph.MIC, "tira", "ai asisten tira suara chat video"},
                 {"Lainnya", "Reset & info", "Powered by RZONEDEV · gratis", Glyph.INFO, "abt", "reset info versi tentang"},
         };
     }
 
     private void open(String pg) {
-        show(pg);
+        if (pg.equals("store")) startActivity(new Intent(this, StoreActivity.class));
+        else show(pg);
     }
 
     private LinearLayout mainBody;
@@ -1089,6 +1097,123 @@ public class MainActivity extends Activity {
         return b;
     }
 
+    // =================================================================== Tema .zth
+
+    private static final int RQ_ZTH = 13;
+
+    private void pgTema() {
+        LinearLayout c = card();
+        c.addView(lab("Tema .zth"));
+        c.addView(tv("Pasang tema format .zth (HiOS/XOS Tecno/Infinix). Ikon aplikasi, latar folder, wallpaper layar utama "
+                + "dan lockscreen ikut berubah. Aplikasi yang tidak ada di tema dibentuk dengan masker ikon tema.", 12.5f, false, MUTED));
+        LinearLayout b = new LinearLayout(this);
+        b.setPadding(0, (int) (d * 12), 0, 0);
+        b.addView(button("Impor file .zth", () -> {
+            try {
+                startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                        .setType("*/*"), RQ_ZTH);
+            } catch (Exception e) {
+                Toast.makeText(this, "Pengelola file tidak tersedia", Toast.LENGTH_SHORT).show();
+            }
+        }), new LinearLayout.LayoutParams(0, -2, 1));
+        if (Zth.active(this) != null) {
+            b.addView(new View(this), new LinearLayout.LayoutParams((int) (d * 8), 1));
+            b.addView(button("Ikon bawaan", () -> {
+                pr.str("zth", "");
+                Toast.makeText(this, "Tema dilepas, ikon kembali ke bawaan", Toast.LENGTH_SHORT).show();
+                show("tema");
+            }), new LinearLayout.LayoutParams(0, -2, 1));
+        }
+        c.addView(b);
+        depthSt = tv("", 12, false, ACC);
+        depthSt.setPadding(0, (int) (d * 8), 0, 0);
+        c.addView(depthSt);
+        add(c);
+
+        List<File> themes = Zth.installed(this);
+        if (themes.isEmpty()) {
+            note("Belum ada tema terpasang. Ketuk \"Impor file .zth\" lalu pilih file tema dari penyimpanan.");
+            return;
+        }
+        section("Tema terpasang");
+        File act = Zth.active(this);
+        LinearLayout grid = null;
+        for (int i = 0; i < themes.size(); i++) {
+            final File t = themes.get(i);
+            if (i % 2 == 0) {
+                grid = new LinearLayout(this);
+                LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(-1, -2);
+                gl.topMargin = (int) (d * 10);
+                col.addView(grid, gl);
+            }
+            boolean on = t.equals(act);
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding((int) (d * 8), (int) (d * 8), (int) (d * 8), (int) (d * 10));
+            GradientDrawable bg = round(SURF, RAD);
+            bg.setStroke((int) (d * 2), on ? ACC : 0);
+            card.setBackground(bg);
+            final ImageView iv = new ImageView(this);
+            iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            iv.setBackground(round(SURF2, 14));
+            iv.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
+            iv.setClipToOutline(true);
+            card.addView(iv, new LinearLayout.LayoutParams(-1, (int) (d * 260)));
+            final File pv = Zth.preview(t, false);
+            new Thread(() -> {
+                Bitmap bm = pv == null ? null : Util.decodeFile(pv, (int) (d * 180), (int) (d * 260));
+                if (bm != null) h.post(() -> iv.setImageBitmap(bm));
+            }).start();
+            TextView nm = tv(t.getName(), 14, true, TEXT);
+            nm.setPadding((int) (d * 4), (int) (d * 8), 0, 0);
+            nm.setSingleLine(true);
+            card.addView(nm);
+            TextView st = tv(on ? "Dipakai" : "Ketuk untuk pakai · tekan lama untuk hapus", 11, false, on ? ACC : MUTED);
+            st.setPadding((int) (d * 4), (int) (d * 2), 0, 0);
+            card.addView(st);
+            card.setOnClickListener(v -> applyTheme(t));
+            card.setOnLongClickListener(v -> {
+                new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                        .setTitle("Hapus tema \"" + t.getName() + "\"?")
+                        .setPositiveButton("Hapus", (a, w) -> {
+                            Zth.delete(this, t);
+                            show("tema");
+                        }).setNegativeButton("Batal", null).show();
+                return true;
+            });
+            Util.press(card);
+            LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, -2, 1);
+            if (i % 2 == 0) cl.rightMargin = (int) (d * 5);
+            else cl.leftMargin = (int) (d * 5);
+            grid.addView(card, cl);
+        }
+        if (themes.size() % 2 == 1 && grid != null) grid.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+    }
+
+    private void applyTheme(final File t) {
+        status("Memasang tema " + t.getName() + "...");
+        new Thread(() -> {
+            String msg;
+            Bitmap lock = null;
+            try {
+                Zth.applyWallpapers(this, t);
+                pr.str("zth", t.getName());
+                IconPack.invalidate();
+                lock = Util.decodeFile(Scene.wpFile(this), 1440, 1440);
+                msg = "Tema " + t.getName() + " dipakai";
+            } catch (Exception e) {
+                msg = "Gagal memasang tema: " + e.getMessage();
+            }
+            final String fm = msg;
+            final Bitmap fl = lock;
+            h.post(() -> {
+                Toast.makeText(this, fm, Toast.LENGTH_SHORT).show();
+                show("tema");
+                if (fl != null) segment(fl); // subjek wallpaper lockscreen otomatis di depan jam
+            });
+        }).start();
+    }
+
     // =================================================================== Tira
 
     private static final int RQ_ASSIST = 11, RQ_MIC = 12;
@@ -1097,7 +1222,7 @@ public class MainActivity extends Activity {
         LinearLayout c = card();
         c.addView(lab("Asisten AI pribadimu"));
         c.addView(tv("Tanya apa saja, atau suruh Tira membuka aplikasi, memutar video YouTube, menyalakan senter, "
-                + "mengatur alarm/timer, mengganti tema, dan lainnya.", 12.5f, false, MUTED));
+                + "mengatur alarm/timer, mengganti tema, dan lainnya. Tira dibuka lewat tombol, bukan kata panggil suara.", 12.5f, false, MUTED));
         LinearLayout b = new LinearLayout(this);
         b.setPadding(0, (int) (d * 12), 0, 0);
         b.addView(button("Buka Tira", () -> startActivity(new Intent(this, TiraActivity.class))), new LinearLayout.LayoutParams(0, -2, 1));
@@ -1109,20 +1234,7 @@ public class MainActivity extends Activity {
 
         boolean mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
         LinearLayout w = card();
-        w.addView(lab("Panggil dengan suara: \"Hai Tira\" / \"Halo Tira\""));
-        w.addView(tv("Tira aktif otomatis saat mendengar kata panggil. Kalimat sesudahnya langsung dijalankan, "
-                + "misalnya \"Hai Tira, putar video kucing lucu\". Mendengarkan terus menambah pemakaian baterai.", 12, false, MUTED));
-        chips(w, null, "tw", false, () -> {
-            if (pr.gi("tw") > 0 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
-                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, RQ_MIC);
-            HotwordService.sync(this, false);
-        }, "Mati", "Saat di layar utama", "Selalu (layar menyala)");
-        if (!mic) {
-            TextView t = tv("Izin mikrofon belum diberikan.", 12, true, 0xFFFF8A80);
-            t.setPadding(0, (int) (d * 8), 0, 0);
-            w.addView(t);
-        }
-        togK(w, "Tira menjawab dengan suara", "Saat kamu bertanya lewat suara", "tts", null);
+        togK(w, "Tira menjawab dengan suara", "Saat kamu bertanya lewat tombol mikrofon", "tts", null);
         add(w);
 
         section("Tombol tengah");
@@ -1131,7 +1243,7 @@ public class MainActivity extends Activity {
         row("Ketuk ikon mikrofon di search bar", "Pill Google di layar utama: ketuk mikrofon = bicara ke Tira", Glyph.MIC,
                 () -> show("dock"));
         row("Gestur ketuk dua kali", "Atur \"Ketuk dua kali di area kosong\" ke Tira", Glyph.GEAR, () -> show("anim"));
-        if (!mic) row("Izinkan mikrofon", "Dibutuhkan untuk perintah suara & \"Hai Tira\"", Glyph.MIC,
+        if (!mic) row("Izinkan mikrofon", "Dibutuhkan untuk bicara ke Tira lewat tombol mikrofon", Glyph.MIC,
                 () -> requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, RQ_MIC));
     }
 
@@ -1158,10 +1270,7 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int rq, String[] p, int[] g) {
         super.onRequestPermissionsResult(rq, p, g);
-        if (rq == RQ_MIC) {
-            HotwordService.sync(this, false);
-            if (page.equals("tira")) show("tira");
-        }
+        if (rq == RQ_MIC && page.equals("tira")) show("tira");
     }
 
     // =================================================================== aktivasi
@@ -1252,6 +1361,9 @@ public class MainActivity extends Activity {
             depthStatus();
         }));
         add(tc);
+        section("Lebih banyak");
+        row("Store Depth Wallpaper", "300 ilustrasi depth + 1000+ foto online", Glyph.STAR,
+                () -> startActivity(new Intent(this, StoreActivity.class)));
         section("Foto sendiri");
         row("Pilih foto (depth otomatis)", "Subjek dipotong otomatis, jam tampil di belakangnya", Glyph.IMAGE,
                 () -> pick(RQ_WP));
@@ -1575,7 +1687,7 @@ public class MainActivity extends Activity {
                 if (n++ >= 12) break;
                 Bitmap b;
                 try {
-                    b = IconPack.make(this, pack, r.activityInfo.packageName, r.activityInfo.name, r.loadIcon(pm), sz, shape, style, ac);
+                    b = Zth.appIcon(this, pr, r.activityInfo.packageName, r.activityInfo.name, r.loadLabel(pm).toString(), r.loadIcon(pm), sz);
                 } catch (Exception e) {
                     continue;
                 }
@@ -1768,6 +1880,28 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(final int rq, int rs, Intent data) {
         super.onActivityResult(rq, rs, data);
+        if (rq == RQ_ZTH) {
+            if (rs != RESULT_OK || data == null || data.getData() == null) return;
+            final Uri zu = data.getData();
+            status("Mengimpor tema...");
+            new Thread(() -> {
+                String msg;
+                String name = null;
+                try {
+                    name = Zth.install(this, zu);
+                    msg = "Tema \"" + name + "\" terpasang";
+                } catch (Exception e) {
+                    msg = "Gagal mengimpor: " + e.getMessage();
+                }
+                final String fm = msg, fn = name;
+                h.post(() -> {
+                    Toast.makeText(this, fm, Toast.LENGTH_LONG).show();
+                    show("tema");
+                    if (fn != null) applyTheme(new File(Zth.root(this), fn));
+                });
+            }).start();
+            return;
+        }
         if (rq == RQ_ASSIST) {
             Toast.makeText(this, rs == RESULT_OK ? "Tira jadi asisten digital" : "Asisten digital tidak diubah", Toast.LENGTH_SHORT).show();
             return;

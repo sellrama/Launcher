@@ -208,7 +208,7 @@ public class DepthView extends View implements SensorEventListener {
         if (getWidth() == 0) return;
         Context c = getContext();
         Prefs q = new Prefs(c);
-        String sig = getWidth() + "," + getHeight() + "," + q.gi("lm") + "," + q.gi("ld") + "," + q.gi("dep") + ","
+        String sig = getWidth() + "," + getHeight() + "," + q.gi("lm") + "," + q.gi("ld") + "," + q.gi("ldv") + "," + q.gi("dep") + ","
                 + Scene.wpFile(c).lastModified() + "," + Scene.fgFile(c).lastModified();
         if (bg == null || !sig.equals(bsig)) {
             Bitmap oldBg = bg, oldFg = fg;

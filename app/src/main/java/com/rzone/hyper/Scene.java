@@ -23,6 +23,9 @@ final class Scene {
             "Samudra & Kapal", "Pencakar Langit", "Planet", "Gurun & Kaktus", "Balon Udara", "Torii & Fuji",
             "Sunset Tropis", "Langit Nebula", "Kota Hujan", "Padang Lavender", "Danau Dingin", "Hutan Autumn",
             "Candi & Kabut", "Salju Bulan", "Kapal Layar", "Vulkan Merah"};
+    /** 15 variasi warna untuk setiap adegan depth (20 × 15 = 300 wallpaper di Store). */
+    static final String[] VARIANTS = {"Asli", "Senja", "Malam", "Fajar", "Neon", "Pastel", "Monokrom", "Hangat",
+            "Dingin", "Ungu", "Hijau", "Merah", "Emas", "Sepia", "Terbalik"};
     private static final Path PLANE = new Path();
 
     static {
@@ -917,12 +920,84 @@ final class Scene {
             Bitmap s = Util.decodeFile(wpFile(x), w, h);
             if (s != null) return Util.crop(s, w, h, true);
         }
-        return depthBg(clampId(new Prefs(x).gi("ld"), DEPTH_NAMES.length), w, h);
+        Prefs p = new Prefs(x);
+        return variant(depthBg(clampId(p.gi("ld"), DEPTH_NAMES.length), w, h), p.gi("ldv"));
+    }
+
+    static android.graphics.ColorMatrix matrix(int v) {
+        android.graphics.ColorMatrix m = new android.graphics.ColorMatrix();
+        switch (v) {
+            case 1: tint(m, 1.15f, 0.92f, 0.78f, 18, 0, -10); break;   // Senja
+            case 2: tint(m, 0.55f, 0.62f, 0.95f, -10, -6, 12); break;  // Malam
+            case 3: tint(m, 1.08f, 0.98f, 1.06f, 14, 6, 16); break;    // Fajar
+            case 4: m.setSaturation(1.9f); rot(m, 40); break;          // Neon
+            case 5: m.setSaturation(0.55f); tintAdd(m, 40); break;     // Pastel
+            case 6: m.setSaturation(0f); break;                        // Monokrom
+            case 7: tint(m, 1.12f, 1.0f, 0.82f, 10, 4, -8); break;     // Hangat
+            case 8: tint(m, 0.86f, 1.0f, 1.16f, -6, 2, 12); break;     // Dingin
+            case 9: rot(m, 75); break;                                 // Ungu
+            case 10: rot(m, -95); break;                               // Hijau
+            case 11: rot(m, 150); m.postConcat(sat(1.2f)); break;      // Merah
+            case 12: tint(m, 1.18f, 1.02f, 0.62f, 20, 10, -20); break; // Emas
+            case 13: sepia(m); break;                                  // Sepia
+            case 14: rot(m, 180); break;                               // Terbalik (warna komplementer)
+            default: break;
+        }
+        return m;
+    }
+
+    private static android.graphics.ColorMatrix sat(float s) {
+        android.graphics.ColorMatrix m = new android.graphics.ColorMatrix();
+        m.setSaturation(s);
+        return m;
+    }
+
+    private static void tint(android.graphics.ColorMatrix m, float r, float g, float b, float ar, float ag, float ab) {
+        m.postConcat(new android.graphics.ColorMatrix(new float[]{r, 0, 0, 0, ar, 0, g, 0, 0, ag, 0, 0, b, 0, ab, 0, 0, 0, 1, 0}));
+    }
+
+    private static void tintAdd(android.graphics.ColorMatrix m, float a) {
+        m.postConcat(new android.graphics.ColorMatrix(new float[]{0.85f, 0, 0, 0, a, 0, 0.85f, 0, 0, a, 0, 0, 0.85f, 0, a, 0, 0, 0, 1, 0}));
+    }
+
+    private static void rot(android.graphics.ColorMatrix m, float deg) {
+        android.graphics.ColorMatrix r = new android.graphics.ColorMatrix();
+        // putar hue di ruang YIQ (aproksimasi standar)
+        double a = Math.toRadians(deg);
+        float c = (float) Math.cos(a), s = (float) Math.sin(a);
+        float lr = 0.213f, lg = 0.715f, lb = 0.072f;
+        r.set(new float[]{
+                lr + c * (1 - lr) + s * (-lr), lg + c * (-lg) + s * (-lg), lb + c * (-lb) + s * (1 - lb), 0, 0,
+                lr + c * (-lr) + s * 0.143f, lg + c * (1 - lg) + s * 0.140f, lb + c * (-lb) + s * (-0.283f), 0, 0,
+                lr + c * (-lr) + s * (-(1 - lr)), lg + c * (-lg) + s * lg, lb + c * (1 - lb) + s * lb, 0, 0,
+                0, 0, 0, 1, 0});
+        m.postConcat(r);
+    }
+
+    private static void sepia(android.graphics.ColorMatrix m) {
+        m.setSaturation(0);
+        tint(m, 1.07f, 0.95f, 0.78f, 12, 6, -6);
+    }
+
+    /** Terapkan variasi warna ke bitmap (menghasilkan bitmap baru, sumber didaur ulang). */
+    static Bitmap variant(Bitmap src, int v) {
+        if (src == null || v <= 0 || v >= VARIANTS.length) return src;
+        Bitmap out = Bitmap.createBitmap(src.getWidth(), src.getHeight(), Bitmap.Config.ARGB_8888);
+        Paint p = new Paint(Paint.FILTER_BITMAP_FLAG);
+        p.setColorFilter(new android.graphics.ColorMatrixColorFilter(matrix(v)));
+        new Canvas(out).drawBitmap(src, 0, 0, p);
+        src.recycle();
+        return out;
+    }
+
+    /** Thumbnail store: adegan id dengan variasi v. */
+    static Bitmap storeThumb(int id, int v, int w, int h) {
+        return variant(depthThumb(id, w, h), v);
     }
 
     static Bitmap lockFg(Context x, int w, int h) {
         Prefs p = new Prefs(x);
-        if (!lockCustom(x)) return depthFg(clampId(p.gi("ld"), DEPTH_NAMES.length), w, h);
+        if (!lockCustom(x)) return variant(depthFg(clampId(p.gi("ld"), DEPTH_NAMES.length), w, h), p.gi("ldv"));
         if (!p.gb("dep")) return null;
         Bitmap s = Util.decodeFile(fgFile(x), w, h);
         return s == null ? null : Util.crop(s, w, h, true);

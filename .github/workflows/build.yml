@@ -22,11 +22,13 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Cek API Tira
+      - name: Cek API Tira (semua otak Nexray)
         continue-on-error: true
         run: |
-          curl -sS -m 40 "https://api.nexray.eu.cc/ai/claude?text=Hai+Tira" | head -c 2000; echo
-          curl -sS -m 40 -G "https://api.nexray.eu.cc/ai/claude" --data-urlencode "text=Siapa kamu? jawab singkat" -i | head -c 2000; echo
+          for b in claude gpt4 gemini deepseek gpt copilot llama qwen; do
+            echo "=== $b"
+            curl -sS -m 30 -G "https://api.nexray.eu.cc/ai/$b" --data-urlencode "text=Jawab satu kata: halo" -w "\nHTTP %{http_code}\n" | head -c 400; echo
+          done
 
       - name: Build debug & release APK
         run: |

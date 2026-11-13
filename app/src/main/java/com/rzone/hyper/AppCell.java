@@ -23,6 +23,8 @@ public class AppCell extends View {
     static int BADGE_COLOR = 0xFFFF453A;
     /** Bentuk latar pratinjau folder (radius relatif). */
     static float FOLDER_RAD = 0.32f;
+    /** Latar folder dari tema .zth (null = latar kaca bawaan). */
+    static Bitmap FOLDER_BG;
 
     interface L {
         void click(AppCell c);
@@ -126,8 +128,12 @@ public class AppCell extends View {
         float top = (getHeight() - (labels ? s + d * 22 : s)) / 2f;
         r.set(cx - s / 2f, top, cx + s / 2f, top + s);
         if (item.kids != null) {
-            fp.setColor(Color.argb(95, 255, 255, 255));
-            c.drawRoundRect(r, s * FOLDER_RAD, s * FOLDER_RAD, fp);
+            if (ok(FOLDER_BG)) {
+                c.drawBitmap(FOLDER_BG, null, r, ip);
+            } else {
+                fp.setColor(Color.argb(95, 255, 255, 255));
+                c.drawRoundRect(r, s * FOLDER_RAD, s * FOLDER_RAD, fp);
+            }
             float m = 0.3f * s, g = 0.08f * s;
             float sx = cx - m - g / 2f, sy = top + (s - m * 2 - g) / 2f;
             for (int i = 0; i < 4 && i < item.kids.size(); i++) {

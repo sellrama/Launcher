@@ -33,7 +33,11 @@ import java.util.regex.Pattern;
  * selebihnya ditanyakan ke AI di https://api.nexray.eu.cc/ai/claude.
  */
 final class TiraBrain {
-    static final String API = "https://api.nexray.eu.cc/ai/claude?text=";
+    /** Otak utama + otak cadangan, semuanya dari Nexray. Dicoba berurutan sampai ada jawaban. */
+    static final String BASE = "https://api.nexray.eu.cc/ai/";
+    static final String[] BRAINS = {"claude", "gpt4", "gemini", "deepseek", "gpt", "copilot", "llama", "qwen"};
+    /** Otak terakhir yang berhasil (dicoba lebih dulu berikutnya). */
+    private static volatile String lastGood = "claude";
     private static final Locale ID = new Locale("id", "ID");
 
     /** Hasil satu jawaban. action dijalankan di UI thread setelah teks tampil (boleh null). */
@@ -238,16 +242,38 @@ final class TiraBrain {
             p.append("Tira: ").append(cut(history.get(i)[1], 300)).append('\n');
         }
         p.append("Pengguna: ").append(cut(q, 600)).append("\nTira:");
-        String ans;
-        try {
-            String body = get(API + URLEncoder.encode(p.toString(), "UTF-8"));
-            ans = clean(parse(body));
-            if (ans.isEmpty()) ans = "Hmm, Tira belum bisa menjawab itu. Coba tanya dengan kalimat lain ya.";
-            history.add(new String[]{q, ans});
-        } catch (Exception e) {
-            ans = "Tira lagi susah terhubung ke internet. Cek koneksi kamu lalu coba lagi ya.";
+        String prompt = p.toString();
+        String ans = null;
+        java.util.List<String> order = new ArrayList<>();
+        order.add(lastGood);
+        for (String b : BRAINS) if (!b.equals(lastGood)) order.add(b);
+        boolean net = false;
+        for (String brain : order) {
+            try {
+                String body = get(BASE + brain + "?text=" + URLEncoder.encode(prompt, "UTF-8"));
+                net = true;
+                String a = clean(parse(body));
+                if (a.isEmpty() || looksBroken(a)) continue;
+                lastGood = brain;
+                ans = a;
+                break;
+            } catch (Exception ignored) {
+            }
         }
+        if (ans != null) history.add(new String[]{q, ans});
+        else if (net) ans = "Hmm, semua otak Tira sedang sibuk. Coba tanya lagi sebentar ya.";
+        else ans = "Tira lagi susah terhubung ke internet. Cek koneksi kamu lalu coba lagi ya.";
         return ans;
+    }
+
+    /** Jawaban yang sebenarnya pesan error dari server (dianggap gagal, coba otak lain). */
+    private static boolean looksBroken(String a) {
+        String l = a.toLowerCase(Locale.ROOT);
+        if (l.startsWith("<!doctype") || l.startsWith("<html")) return true;
+        if (a.length() < 120 && (l.contains("error") || l.contains("not found") || l.contains("limit")
+                || l.contains("invalid") || l.contains("forbidden") || l.contains("unauthorized") || l.contains("gagal")))
+            return true;
+        return l.equals("false") || l.equals("null") || l.equals("true");
     }
 
     private static String cut(String s, int n) {

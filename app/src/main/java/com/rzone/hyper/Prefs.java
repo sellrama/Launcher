@@ -38,6 +38,7 @@ public class Prefs {
         d("lm", 0);  // 0 bawaan, 1 foto sendiri
         d("ld", 0);  // id depth bawaan
         d("dep", 1); // efek depth foto sendiri
+        d("ldv", 0); // variasi warna depth bawaan (Scene.VARIANTS)
         // ---------- jam ----------
         d("cs", 100); d("cy", 27); d("sh", 0); d("cc", 0xFFFFFFFF); d("cg", 0); // sh = desain jam (Clock.NAMES)
         d("h24", 1); d("co", 100); d("csd", 1); d("ct", 0); d("cl", 108);
@@ -59,7 +60,6 @@ public class Prefs {
         // ---------- animasi & gestur ----------
         d("as", 100); d("sg", 0); d("dt", 0);
         // ---------- Tira ----------
-        d("tw", 0);  // kata panggil "Hai Tira": 0 mati, 1 di layar utama, 2 selalu
         d("tts", 1); // Tira menjawab dengan suara bila ditanya lewat suara
 
         THEME_KEYS = new String[]{"ui", "ac", "cs", "cy", "sh", "cc", "cg", "h24", "co", "csd", "ct",
@@ -260,7 +260,7 @@ public class Prefs {
 
     /** Berubah bila ikon perlu dibuat ulang (termasuk icon pack, nama & aplikasi tersembunyi). */
     public String iconSig() {
-        return gi("ik") + "," + gi("is") + "," + gi("ac") + "," + str("ipk") + "," + str("nm").hashCode()
+        return gi("ik") + "," + gi("is") + "," + gi("ac") + "," + str("ipk") + "," + str("zth") + "," + str("nm").hashCode()
                 + "," + str("hid").hashCode();
     }
 

@@ -13,7 +13,6 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Tira: perintah suara & alarm -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <!-- ML Kit mengunduh model segmentasi -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -132,6 +131,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".StoreActivity"
+            android:exported="false"
+            android:label="Store Depth Wallpaper" />
+
         <!-- Tira: asisten AI -->
         <activity
             android:name=".TiraActivity"
@@ -163,11 +167,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
-
-        <service
-            android:name=".HotwordService"
-            android:exported="false"
-            android:foregroundServiceType="microphone" />
 
         <service
             android:name=".LockService"
